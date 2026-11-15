@@ -66,6 +66,14 @@ describe('severity discipline', () => {
     }
   });
 
+  it('registers the content and conversion heuristic checks', () => {
+    const ids = checks.filter((c) => ['content', 'conversion'].includes(c.category)).map((c) => c.id);
+    expect(ids.sort()).toEqual(
+      ['word-count', 'copyright-year', 'heading-order', 'contact-method', 'click-to-call', 'cta', 'analytics'].sort(),
+    );
+    checks.filter((c) => ids.includes(c.id)).forEach((c) => expect(c.confidence).toBe('heuristic'));
+  });
+
   it('critical is used only by the four allowed checks', () => {
     for (const [name, page] of Object.entries(fixtures)) {
       for (const f of runChecks(page).filter((x) => x.severity === 'critical')) {

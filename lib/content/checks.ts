@@ -162,4 +162,36 @@ export const CHECK_COPY: Record<string, CheckCopy> = {
     howToFix:
       'Use heading levels in order. For example, put an H2 under an H1 before you use an H3. Choose levels for structure and not for text size.',
   },
+  'contact-method': {
+    title: 'Contact method',
+    clientTitle: 'We could not find a phone link, email link, or contact form on your homepage',
+    whyItMatters:
+      'Visitors who want to reach you need an easy way to do it. If they cannot find one, some may leave. Your contact details may be there in a form that this check cannot read.',
+    howToFix:
+      'Show your phone number as a tap-to-call link, your email as a mailto link, or add a short contact form on the homepage.',
+  },
+  'click-to-call': {
+    title: 'Click-to-call link',
+    clientTitle: 'We could not find a tap-to-call phone link on your homepage',
+    whyItMatters:
+      'Many visitors use a phone. A phone number that is plain text takes more steps to call. A tap-to-call link can make it easier to reach you.',
+    howToFix:
+      'Turn your phone number into a link that starts with tel:. Most website editors have a simple option for this.',
+  },
+  cta: {
+    title: 'Call to action',
+    clientTitle: 'We could not find a clear call-to-action button or link on your homepage',
+    whyItMatters:
+      'A call to action tells visitors what to do next, for example "Book a call". Without one, visitors may not know how to become a customer. Your site may use words that this check does not know.',
+    howToFix:
+      'Add a clear button near the top of the page. Use action words such as "Get a quote", "Book now", or "Call us".',
+  },
+  analytics: {
+    title: 'Visitor and lead measurement',
+    clientTitle: 'We could not detect a tool that measures visitors and leads',
+    whyItMatters:
+      'Without a measurement tool, it is hard to know how many people visit and how many contact you. A tool may be in use that this check cannot see. For example, it may run on the server or start only after a visitor accepts cookies.',
+    howToFix:
+      'Ask your developer which tool you use. If you use none, add a privacy-friendly tool such as Plausible or Google Analytics. Track form sends and phone taps as goals.',
+  },
 };

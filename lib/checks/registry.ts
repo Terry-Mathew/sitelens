@@ -19,10 +19,15 @@ import { check as favicon } from '@/lib/checks/technical/favicon';
 import { check as wordCount } from '@/lib/checks/content/word-count';
 import { check as copyrightYear } from '@/lib/checks/content/copyright-year';
 import { check as headingOrder } from '@/lib/checks/content/heading-order';
+import { check as contactMethod } from '@/lib/checks/conversion/contact-method';
+import { check as clickToCall } from '@/lib/checks/conversion/click-to-call';
+import { check as cta } from '@/lib/checks/conversion/cta';
+import { check as analytics } from '@/lib/checks/conversion/analytics';
 
 export const checks: Check[] = [
   siteReachable, https, httpRedirect, redirectChain, indexable, robotsPresent,
   robotsAllows, sitemap, title, metaDescription, singleH1, canonical,
   htmlLang, viewport, imgAlt, openGraph, favicon,
   wordCount, copyrightYear, headingOrder,
+  contactMethod, clickToCall, cta, analytics,
 ];
