@@ -53,7 +53,7 @@ export async function gather(inputUrl: string, now: () => Date = () => new Date(
         guarded(() => fetchSitemap(origin, robots.sitemaps), { state: 'error' as const, url: null, isIndex: false }),
       ),
       guarded(() => checkHttpRedirect(homepage.finalUrl), null),
-      guarded(() => fetchFavicon(origin, homepage.rawHtml), { linkTag: false, icoStatus: null }),
+      guarded(() => fetchFavicon(origin), { icoStatus: null }),
     ]);
   });
 

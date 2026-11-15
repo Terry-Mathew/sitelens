@@ -235,47 +235,34 @@ describe('checkHttpRedirect', () => {
 });
 
 describe('fetchFavicon', () => {
-  const html = '<head><link rel="shortcut icon" href="/f.png"></head>';
-
-  it('detects a link tag and reads the /favicon.ico status', async () => {
+  it('reads the /favicon.ico status with HEAD', async () => {
     const f = fetcherOf(ok('', { status: 200, contentType: 'image/x-icon' }));
-    expect(await fetchFavicon('https://example.com', html, f)).toEqual({ linkTag: true, icoStatus: 200 });
+    expect(await fetchFavicon('https://example.com', f)).toEqual({ icoStatus: 200 });
     expect(f).toHaveBeenCalledWith('https://example.com/favicon.ico', expect.objectContaining({ method: 'HEAD' }));
   });
 
-  it('reports no link tag and a 404 ico', async () => {
-    const f = fetcherOf(ok('', { status: 404 }));
-    expect(await fetchFavicon('https://example.com', '<head></head>', f)).toEqual({ linkTag: false, icoStatus: 404 });
-  });
-
-  it('does not treat apple-touch-icon alone as an icon link', async () => {
-    const f = fetcherOf(ok('', { status: 404 }));
-    const r = await fetchFavicon('https://example.com', '<link rel="apple-touch-icon" href="/a.png">', f);
-    expect(r.linkTag).toBe(false);
+  it('reports a 404 ico', async () => {
+    expect(await fetchFavicon('https://example.com', fetcherOf(ok('', { status: 404 })))).toEqual({ icoStatus: 404 });
   });
 
   it('falls back to GET when HEAD is not allowed', async () => {
     const f = fetcherOf(ok('', { status: 405 }), ok('', { status: 200, contentType: 'image/x-icon' }));
-    expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(200);
+    expect((await fetchFavicon('https://example.com', f)).icoStatus).toBe(200);
     expect(f).toHaveBeenCalledTimes(2);
   });
 
   it('reports a 200 text/html answer (soft 404) as icoStatus 404', async () => {
     const f = fetcherOf(ok('<html>app</html>', { status: 200, contentType: 'text/html; charset=utf-8' }));
-    expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(404);
+    expect((await fetchFavicon('https://example.com', f)).icoStatus).toBe(404);
   });
 
   it('keeps the real status for a 200 image/x-icon answer', async () => {
     const f = fetcherOf(ok('', { status: 200, contentType: 'image/x-icon' }));
-    expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(200);
+    expect((await fetchFavicon('https://example.com', f)).icoStatus).toBe(200);
   });
 
   it('returns icoStatus null on error', async () => {
-    expect((await fetchFavicon('https://example.com', html, fetcherOf(failure('timeout')))).icoStatus).toBeNull();
-  });
-
-  it('reports no link tag when there is no html', async () => {
-    expect((await fetchFavicon('https://example.com', null, fetcherOf(ok('', { status: 404 })))).linkTag).toBe(false);
+    expect((await fetchFavicon('https://example.com', fetcherOf(failure('timeout')))).icoStatus).toBeNull();
   });
 });
 

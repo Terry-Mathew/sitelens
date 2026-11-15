@@ -59,7 +59,7 @@ export interface PageData {
   rendered: { html: string } | null; // Firecrawl output; null = fallback
   robots: { state: 'found' | 'missing' | 'error'; groups: RobotsGroup[]; sitemaps: string[] };
   sitemap: { state: 'valid' | 'invalid' | 'missing' | 'error'; url: string | null; isIndex: boolean };
-  favicon: { linkTag: boolean; icoStatus: number | null };
+  favicon: { icoStatus: number | null };
   llmsTxt: { present: boolean | null };
   jsRendered: boolean;
   loadedWith: 'firecrawl' | 'direct-fallback';

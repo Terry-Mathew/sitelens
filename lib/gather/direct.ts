@@ -1,6 +1,6 @@
 import type { LimitationCode, PageData } from '@/lib/types';
 import { safeFetch, type SafeFetchResult } from '@/lib/security/safe-fetch';
-import { hasChallengeMarker, loadHtml } from '@/lib/html';
+import { hasChallengeMarker } from '@/lib/html';
 
 type Fetcher = typeof safeFetch;
 type Homepage = PageData['homepage'] & { finalUrl: string };
@@ -144,29 +144,20 @@ export async function checkHttpRedirect(finalUrl: string, fetcher: Fetcher = saf
   }
 }
 
-export async function fetchFavicon(
-  origin: string,
-  html: string | null,
-  fetcher: Fetcher = safeFetch,
-): Promise<PageData['favicon']> {
-  const linkTag =
-    html !== null &&
-    loadHtml(html)('link[rel]')
-      .toArray()
-      .some((el) => (el.attribs.rel ?? '').toLowerCase().split(/\s+/).includes('icon'));
-
+/** Reads the status of /favicon.ico. The favicon check reads the icon link from the page HTML. */
+export async function fetchFavicon(origin: string, fetcher: Fetcher = safeFetch): Promise<PageData['favicon']> {
   const icoUrl = new URL('/favicon.ico', origin).href;
   let result = await fetcher(icoUrl, { timeoutMs: SMALL_TIMEOUT_MS, maxBytes: SMALL_MAX_BYTES, method: 'HEAD' });
   // Some servers do not support HEAD. Ask again with GET.
   if (result.ok && (result.status === 405 || result.status === 501)) {
     result = await fetcher(icoUrl, { timeoutMs: SMALL_TIMEOUT_MS, maxBytes: SMALL_MAX_BYTES });
   }
-  if (!result.ok) return { linkTag, icoStatus: null };
+  if (!result.ok) return { icoStatus: null };
   // Many single-page apps answer 200 with an HTML page for any path (a soft 404).
   // That page is not an icon, so report it as 404.
   const mime = (result.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   const softNotFound = result.status === 200 && mime === 'text/html';
-  return { linkTag, icoStatus: softNotFound ? 404 : result.status };
+  return { icoStatus: softNotFound ? 404 : result.status };
 }
 
 export async function fetchLlmsTxt(origin: string, fetcher: Fetcher = safeFetch): Promise<PageData['llmsTxt']> {

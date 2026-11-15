@@ -39,7 +39,7 @@ beforeEach(() => {
   vi.mocked(scrapeRendered).mockResolvedValue({ html: '<html>rendered</html>' });
   vi.mocked(fetchHomepage).mockResolvedValue(homepage());
   vi.mocked(checkHttpRedirect).mockResolvedValue(true);
-  vi.mocked(fetchFavicon).mockResolvedValue({ linkTag: true, icoStatus: 200 });
+  vi.mocked(fetchFavicon).mockResolvedValue({ icoStatus: 200 });
   vi.mocked(fetchLlmsTxt).mockResolvedValue({ present: false });
   vi.mocked(fetchRobots).mockResolvedValue({ state: 'found', groups: [], sitemaps: ['https://example.com/s.xml'] });
   vi.mocked(fetchSitemap).mockResolvedValue({ state: 'valid', url: 'https://example.com/s.xml', isIndex: false });
@@ -100,7 +100,7 @@ describe('gather', () => {
 
     expect(fetchSitemap).toHaveBeenCalledWith('https://www.example.com', ['https://example.com/s.xml']);
     expect(checkHttpRedirect).toHaveBeenCalledWith('https://www.example.com/');
-    expect(fetchFavicon).toHaveBeenCalledWith('https://www.example.com', REAL);
+    expect(fetchFavicon).toHaveBeenCalledWith('https://www.example.com');
   });
 
   it('drops the Firecrawl HTML when the homepage is not an HTML page', async () => {
@@ -186,7 +186,7 @@ describe('gather', () => {
     const page = await run();
     expect(page.sitemap).toEqual({ state: 'error', url: null, isIndex: false });
     expect(page.httpRedirectsToHttps).toBeNull();
-    expect(page.favicon).toEqual({ linkTag: false, icoStatus: null });
+    expect(page.favicon).toEqual({ icoStatus: null });
     expect(page.robots).toEqual({ state: 'error', groups: [], sitemaps: [] });
     expect(page.llmsTxt).toEqual({ present: null });
     expect(page.limitations).toEqual(['robots_unavailable', 'sitemap_unavailable']);

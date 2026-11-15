@@ -42,7 +42,7 @@ const fixtures: Record<string, PageData> = {
     httpRedirectsToHttps: null,
     robots: { state: 'error', groups: [], sitemaps: [] },
     sitemap: { state: 'error', url: null },
-    favicon: { linkTag: false, icoStatus: null },
+    favicon: { icoStatus: null },
   }),
   bareNoTags: makePage({ rendered: { html: bareHtml }, homepage: { rawHtml: bareHtml } }),
   nonHtml: makePage({

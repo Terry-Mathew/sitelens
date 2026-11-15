@@ -60,7 +60,7 @@ export function makePage(overrides: DeepPartial<PageData> = {}): PageData {
       sitemaps: ['https://example.com/sitemap.xml'],
     },
     sitemap: { state: 'valid', url: 'https://example.com/sitemap.xml', isIndex: false },
-    favicon: { linkTag: true, icoStatus: 200 },
+    favicon: { icoStatus: 200 },
     llmsTxt: { present: false },
     jsRendered: false,
     loadedWith: 'firecrawl',
