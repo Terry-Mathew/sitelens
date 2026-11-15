@@ -18,6 +18,7 @@ const CHALLENGE_MARKERS = ['cf-chl', 'challenge-platform', 'just a moment...'];
 export const REASON = {
   blocked: 'This site blocked our automated check',
   unreachable: 'The website could not be reached',
+  notResolved: 'The website address could not be found',
   timeout: 'The website did not respond in time',
   tooLarge: 'Page too large to analyse',
   notAllowed: 'The website address is not allowed',
@@ -56,6 +57,9 @@ function fromFailure(url: string, reason: Extract<SafeFetchResult, { ok: false }
       return { ...base, blockReason: REASON.tooLarge };
     case 'blocked_address':
       return { ...base, unreachableReason: REASON.notAllowed };
+    case 'dns':
+      // The DNS name does not exist. A temporary DNS failure goes to the default case.
+      return { ...base, unreachableReason: REASON.notResolved };
     default:
       return { ...base, unreachableReason: REASON.unreachable };
   }
@@ -85,11 +89,34 @@ function fromResponse(result: Success): Homepage {
   return { ...base, rawHtml: result.body };
 }
 
+/** The http:// form of an https:// URL, or null for any other URL. */
+function httpVariant(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return null;
+    parsed.protocol = 'http:';
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchHomepage(url: string, fetcher: Fetcher = safeFetch): Promise<Homepage> {
   const options = { timeoutMs: HOMEPAGE_TIMEOUT_MS, maxBytes: HOMEPAGE_MAX_BYTES };
   let result = await fetcher(url, options);
   // Retry a server error once. A challenge page is not a server error.
   if (result.ok && result.status >= 500 && !isChallengePage(result)) result = await fetcher(url, options);
+  if (!result.ok && result.reason === 'network') {
+    // The https:// connection or TLS step failed. The site can serve only http://.
+    // Use the http:// answer only when it is a 2xx. Then the HTTPS check fails on real evidence.
+    const httpUrl = httpVariant(url);
+    if (httpUrl !== null) {
+      const fallback = await fetcher(httpUrl, options);
+      if (fallback.ok && fallback.status >= 200 && fallback.status < 300) {
+        return { ...fromResponse(fallback), httpFallback: true };
+      }
+    }
+  }
   return result.ok ? fromResponse(result) : fromFailure(url, result.reason);
 }
 

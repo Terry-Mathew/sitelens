@@ -47,6 +47,7 @@ describe('fetchHomepage', () => {
     expect(r.contentType).toBe('text/html; charset=utf-8');
     expect(r.redirectChain).toEqual(['http://example.com/']);
     expect(r.finalUrl).toBe('https://example.com/');
+    expect(r.httpFallback).toBeUndefined();
     expect(f).toHaveBeenCalledWith('http://example.com/', { timeoutMs: 10_000, maxBytes: 5 * 1024 * 1024 });
   });
 
@@ -68,12 +69,67 @@ describe('fetchHomepage', () => {
     expect(f).toHaveBeenCalledTimes(1);
   });
 
-  it('marks DNS failure as unreachable', async () => {
+  it('marks a DNS name that does not exist as not found', async () => {
     const r = await fetchHomepage('https://example.com/', fetcherOf(failure('dns')));
-    expect(r.unreachableReason).toBe('The website could not be reached');
+    expect(r.unreachableReason).toBe('The website address could not be found');
     expect(r.blocked).toBe(false);
     expect(r.status).toBeNull();
     expect(r.rawHtml).toBeNull();
+  });
+
+  it('marks a temporary DNS failure as unreachable, not as not found', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('dns_transient')));
+    expect(r.unreachableReason).toBe('The website could not be reached');
+    expect(r.status).toBeNull();
+  });
+
+  it('marks too many redirects as unreachable, not as not found', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('too_many_redirects')));
+    expect(r.unreachableReason).toBe('The website could not be reached');
+  });
+
+  it('tries http:// once when https:// fails at the connection or TLS step, and uses a 2xx answer', async () => {
+    const f = fetcherOf(failure('network'), ok('<html><body>http only</body></html>', { finalUrl: 'http://example.com/' }));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(f).toHaveBeenNthCalledWith(2, 'http://example.com/', { timeoutMs: 10_000, maxBytes: 5 * 1024 * 1024 });
+    expect(r.status).toBe(200);
+    expect(r.finalUrl).toBe('http://example.com/');
+    expect(r.rawHtml).toBe('<html><body>http only</body></html>');
+    expect(r.unreachableReason).toBeUndefined();
+    expect(r.httpFallback).toBe(true);
+  });
+
+  it('keeps the https:// failure when the http:// try also fails', async () => {
+    const f = fetcherOf(failure('network'), failure('network'));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(r.finalUrl).toBe('https://example.com/');
+    expect(r.unreachableReason).toBe('The website could not be reached');
+    expect(r.status).toBeNull();
+  });
+
+  it('keeps the https:// failure when the http:// try answers with an error status', async () => {
+    const f = fetcherOf(failure('network'), ok('gone', { status: 404, finalUrl: 'http://example.com/' }));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(r.finalUrl).toBe('https://example.com/');
+    expect(r.status).toBeNull();
+    expect(r.unreachableReason).toBe('The website could not be reached');
+  });
+
+  it.each(['timeout', 'dns', 'dns_transient', 'too_large', 'blocked_address', 'too_many_redirects'] as const)(
+    'does not try http:// after a %s failure',
+    async (reason) => {
+      const f = fetcherOf(failure(reason), ok('<p>x</p>', { finalUrl: 'http://example.com/' }));
+      await fetchHomepage('https://example.com/', f);
+      expect(f).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('does not try again when the input is already http://', async () => {
+    const f = fetcherOf(failure('network'), ok('<p>x</p>'));
+    await fetchHomepage('http://example.com/', f);
+    expect(f).toHaveBeenCalledTimes(1);
   });
 
   it('marks a network failure as unreachable without leaking the raw message', async () => {

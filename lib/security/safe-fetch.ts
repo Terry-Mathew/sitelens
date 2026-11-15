@@ -13,7 +13,15 @@ import { bareHostname, isLocalhostName } from './url';
 export const SITELENS_USER_AGENT = 'Mozilla/5.0 (compatible; SiteLensBot/1.0)';
 export const DEFAULT_MAX_REDIRECTS = 5;
 
-export type SafeFetchReason = 'timeout' | 'blocked_address' | 'too_many_redirects' | 'too_large' | 'network' | 'dns';
+// 'dns' means the name does not exist. 'dns_transient' means the lookup failed for a reason that can pass.
+export type SafeFetchReason =
+  | 'timeout'
+  | 'blocked_address'
+  | 'too_many_redirects'
+  | 'too_large'
+  | 'network'
+  | 'dns'
+  | 'dns_transient';
 
 export type SafeFetchOptions = {
   timeoutMs: number;
@@ -52,7 +60,8 @@ export type SafeFetchConfig = {
 };
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-const DNS_CODES = new Set(['ENOTFOUND', 'EAI_AGAIN', 'EAI_FAIL', 'EAI_NONAME', 'EAI_NODATA', 'ENODATA', 'ESERVFAIL']);
+const DNS_NOT_FOUND_CODES = new Set(['ENOTFOUND', 'EAI_NONAME', 'EAI_NODATA', 'ENODATA']);
+const DNS_TRANSIENT_CODES = new Set(['EAI_AGAIN', 'EAI_FAIL', 'ESERVFAIL', 'ETIMEOUT']);
 const TIMEOUT_CODES = new Set(['ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']);
 
 type Failure = Extract<SafeFetchResult, { ok: false }>;
@@ -107,7 +116,10 @@ function classifyError(err: unknown, timedOut: boolean): Failure {
   if (errors.some((e) => e instanceof BlockedAddressError)) {
     return fail('blocked_address', 'The address resolves to a private or reserved network and was not fetched.');
   }
-  if (errors.some((e) => DNS_CODES.has(String(codeOf(e))))) {
+  if (errors.some((e) => DNS_TRANSIENT_CODES.has(String(codeOf(e))))) {
+    return fail('dns_transient', 'The domain name lookup failed for a temporary reason.');
+  }
+  if (errors.some((e) => DNS_NOT_FOUND_CODES.has(String(codeOf(e))))) {
     return fail('dns', 'The domain name could not be resolved.');
   }
   if (errors.some((e) => TIMEOUT_CODES.has(String(codeOf(e))))) {

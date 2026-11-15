@@ -24,20 +24,62 @@ describe('site-reachable', () => {
   });
 
   it('410 → fail critical', () => {
-    const r = check.run(makePage({ homepage: { status: 410, unreachableReason: 'The homepage was not found', rawHtml: null } }));
+    const r = check.run(
+      makePage({ homepage: { status: 410, unreachableReason: 'The homepage was not found', rawHtml: null }, rendered: null }),
+    );
     expect(r).toMatchObject({ status: 'fail', severity: 'critical' });
   });
 
   it('repeated 5xx → fail critical', () => {
-    const r = check.run(makePage({ homepage: { status: 503, unreachableReason: 'The website returned a server error', rawHtml: null } }));
+    const r = check.run(
+      makePage({ homepage: { status: 503, unreachableReason: 'The website returned a server error', rawHtml: null }, rendered: null }),
+    );
     expect(r).toMatchObject({ status: 'fail', severity: 'critical', evidence: { status: 503 } });
   });
 
-  it('network failure (no status) → fail critical with null status', () => {
+  it('DNS name not found and no browser render → fail critical with null status', () => {
     const r = check.run(
-      makePage({ homepage: { status: null, unreachableReason: 'The website could not be reached', rawHtml: null } }),
+      makePage({
+        homepage: { status: null, unreachableReason: 'The website address could not be found', rawHtml: null },
+        rendered: null,
+        httpRedirectsToHttps: null,
+      }),
     );
     expect(r).toMatchObject({ status: 'fail', severity: 'critical', evidence: { status: null } });
+  });
+
+  it('other network failure (TLS, reset, refused, transient DNS, redirects) → unable_to_check, never fail', () => {
+    const r = check.run(
+      makePage({
+        homepage: { status: null, unreachableReason: 'The website could not be reached', rawHtml: null },
+        rendered: null,
+        httpRedirectsToHttps: null,
+      }),
+    );
+    expect(r.status).toBe('unable_to_check');
+    expect(r.severity).toBe('info');
+    expect(r.unableReason).toBe('The website could not be reached');
+  });
+
+  it.each([
+    ['DNS not found', { status: null, unreachableReason: 'The website address could not be found' }],
+    ['404', { status: 404, unreachableReason: 'The homepage was not found' }],
+    ['repeated 5xx', { status: 503, unreachableReason: 'The website returned a server error' }],
+  ])('%s but the browser render loaded the page → unable_to_check', (_name, homepage) => {
+    const r = check.run(makePage({ homepage: { ...homepage, rawHtml: null }, rendered: { html: '<html>ok</html>' } }));
+    expect(r.status).toBe('unable_to_check');
+    expect(r.severity).toBe('info');
+  });
+
+  it('404 but the http:// address answered with a page → unable_to_check', () => {
+    const r = check.run(
+      makePage({
+        homepage: { status: 404, unreachableReason: 'The homepage was not found', rawHtml: null },
+        rendered: null,
+        httpRedirectsToHttps: false,
+      }),
+    );
+    expect(r.status).toBe('unable_to_check');
   });
 
   it('blocked homepage → unable_to_check, never fail', () => {

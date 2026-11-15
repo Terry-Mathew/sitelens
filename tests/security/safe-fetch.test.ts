@@ -207,6 +207,15 @@ describe('safeFetch', () => {
     expect(res).toMatchObject({ ok: false, reason: 'dns' });
   });
 
+  it.each(['EAI_AGAIN', 'EAI_FAIL', 'ESERVFAIL'])('reports a temporary DNS failure (%s) as dns_transient', async (code) => {
+    const flaky = vi.fn<ResolveAll>(async () => {
+      throw Object.assign(new Error(`getaddrinfo ${code} flaky.test`), { code });
+    });
+    const res = await localFetch(flaky)(`http://flaky.test:${port}/`, OPTS);
+    expect(res).toMatchObject({ ok: false, reason: 'dns_transient' });
+    expect(JSON.stringify(res)).not.toContain('flaky.test');
+  });
+
   it('reports connection failures as network', async () => {
     const closed = http.createServer();
     await new Promise<void>((r) => closed.listen(0, '127.0.0.1', () => r()));

@@ -52,6 +52,8 @@ export interface PageData {
     headers: Record<string, string>;
     redirectChain: string[];
     rawHtml: string | null;
+    // True when https:// failed at the connection or TLS step and the http:// answer is used.
+    httpFallback?: boolean;
   };
   httpRedirectsToHttps: boolean | null; // null = could not determine
   rendered: { html: string } | null; // Firecrawl output; null = fallback
