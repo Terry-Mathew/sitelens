@@ -34,9 +34,9 @@ describe('typesOf', () => {
     expect(typesOf(nodes)).toEqual(['Organization', 'LocalBusiness']);
   });
 
-  it('keeps at most 20 types', () => {
+  it('returns every type without a cap', () => {
     const many = JSON.stringify(Array.from({ length: 30 }, (_, i) => ({ '@type': `T${i}` })));
-    expect(typesOf(parseJsonLd(doc(many)).nodes)).toHaveLength(20);
+    expect(typesOf(parseJsonLd(doc(many)).nodes)).toHaveLength(30);
   });
 });
 

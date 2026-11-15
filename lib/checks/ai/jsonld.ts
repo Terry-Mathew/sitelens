@@ -2,8 +2,6 @@ import type { CheerioAPI } from 'cheerio';
 
 export type JsonLdNode = Record<string, unknown>;
 
-const MAX_TYPES = 20;
-
 function isNode(value: unknown): value is JsonLdNode {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -32,7 +30,7 @@ export function parseJsonLd($: CheerioAPI): { nodes: JsonLdNode[]; invalidBlocks
   return { nodes, invalidBlocks };
 }
 
-/** Unique @type values, in document order. A @type can be a string or a list. */
+/** All unique @type values, in document order. A @type can be a string or a list. */
 export function typesOf(nodes: JsonLdNode[]): string[] {
   const types = new Set<string>();
   for (const node of nodes) {
@@ -41,7 +39,7 @@ export function typesOf(nodes: JsonLdNode[]): string[] {
       if (typeof t === 'string' && t.trim() !== '') types.add(t.trim());
     }
   }
-  return [...types].slice(0, MAX_TYPES);
+  return [...types];
 }
 
 /** Every value stored under `key`, at any depth. */
@@ -77,4 +75,9 @@ export function hasTelephone(nodes: JsonLdNode[]): boolean {
 
 export function hasAddress(nodes: JsonLdNode[]): boolean {
   return findDeep(nodes, 'address').some(hasText);
+}
+
+/** The short name of a type. "https://schema.org/Organization" and "schema:Organization" give "Organization". */
+export function shortType(type: string): string {
+  return type.split(/[/#:]/).filter(Boolean).pop() ?? type;
 }

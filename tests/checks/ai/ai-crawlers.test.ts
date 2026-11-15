@@ -16,6 +16,20 @@ describe('ai-crawlers', () => {
     for (const name of CRAWLERS.filter((n) => n !== 'GPTBot')) expect(crawlers[name]).toBe('allowed');
   });
 
+  it('a crawler-specific group overrides the * group', () => {
+    const page = makePage({
+      robots: {
+        groups: [
+          { userAgents: ['*'], allow: [], disallow: ['/'] },
+          { userAgents: ['gptbot'], allow: ['/'], disallow: [] },
+        ],
+      },
+    });
+    const crawlers = check.run(page).evidence.crawlers as Record<string, string>;
+    expect(crawlers.GPTBot).toBe('allowed');
+    expect(crawlers.ClaudeBot).toBe('blocked');
+  });
+
   it('lists all seven crawlers', () => {
     const r = check.run(makePage());
     expect(Object.keys(r.evidence.crawlers as object)).toEqual(CRAWLERS);

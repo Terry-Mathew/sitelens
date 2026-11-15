@@ -23,6 +23,24 @@ describe('structured-data', () => {
     },
   );
 
+  it('25 types with Organization last → pass, evidence capped at 20', () => {
+    const list = [...Array.from({ length: 24 }, (_, i) => ({ '@type': `T${i}` })), { '@type': 'Organization' }];
+    const r = check.run(pageWith(ld(JSON.stringify(list))));
+    expect(r.status).toBe('pass');
+    expect(r.evidence.types as string[]).toHaveLength(20);
+  });
+
+  it.each(['https://schema.org/LocalBusiness', 'http://schema.org/Organization', 'schema:Organization'])(
+    'accepts IRI-form type %s',
+    (type) => {
+      expect(check.run(pageWith(ld(`{"@type":"${type}"}`))).status).toBe('pass');
+    },
+  );
+
+  it('IRI-form type that is not a business → opportunity', () => {
+    expect(check.run(pageWith(ld('{"@type":"https://schema.org/WebSite"}'))).status).toBe('fail');
+  });
+
   it('no JSON-LD → opportunity', () => {
     expect(check.run(pageWith(htmlPage('')))).toMatchObject({
       status: 'fail', severity: 'opportunity', evidence: { types: [], invalidBlocks: 0 },
