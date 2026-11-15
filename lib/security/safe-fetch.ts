@@ -196,6 +196,7 @@ export function createSafeFetch(config: SafeFetchConfig = {}) {
           headers: { 'user-agent': SITELENS_USER_AGENT, accept: '*/*' },
         });
 
+        // nosemgrep: outbound client reads a redirect target that checkHop re-validates on every hop; not an open redirect.
         const location = firstHeader(res.headers.location);
         if (REDIRECT_STATUSES.has(res.statusCode) && location) {
           discard(res.body);
