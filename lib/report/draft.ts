@@ -29,7 +29,7 @@ export function defaultDraft(scan: ScanResult): ReportDraft {
 
 // Call this once when PageSpeed data arrives. It adds the failed and passed performance findings.
 export function withPerformanceDefaults(draft: ReportDraft, performance: Finding[]): ReportDraft {
-  if (draft.performanceDefaulted) return draft;
+  if (draft.performanceDefaulted || performance.length === 0) return draft;
   const ids = performance.filter(isDefaultIncluded).map((f) => f.checkId);
   return {
     ...draft,
@@ -69,6 +69,8 @@ export function reportSections(
 ): ReportSections {
   const all = reportFindings(scan, pagespeed, draft);
   const included = (f: Finding) => draft.includedCheckIds.includes(f.checkId);
+  const selectionPool = [...scan.findings, ...(pagespeed ? performanceFindings(pagespeed) : [])];
+  const shown = (f: Finding) => included(f) && (f.category !== 'performance' || draft.includePerformance);
   const isIssue = (f: Finding) => f.status === 'fail' && f.severity !== 'info';
 
   const limitations = new Set<LimitationCode>(scan.limitations);
@@ -83,7 +85,8 @@ export function reportSections(
     observations: all.filter((f) => f.status === 'observation' && included(f)),
     couldNotCheck: all.filter((f) => f.status === 'unable_to_check'),
     performance: draft.includePerformance ? (pagespeed ?? null) : null,
-    selectionNote: all.some((f) => isIssue(f) && !included(f)),
+    // Hiding the performance section counts as excluding its failed findings.
+    selectionNote: selectionPool.some((f) => isIssue(f) && !shown(f)),
     limitations: [...limitations],
   };
 }

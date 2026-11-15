@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildSummary } from '@/lib/report/summary';
-import { defaultDraft } from '@/lib/report/draft';
+import { defaultDraft, withPerformanceDefaults } from '@/lib/report/draft';
+import { performanceFindings } from '@/lib/checks/performance';
 import { formatDate, pageSize } from '@/lib/report/region';
 import { CHECK_COPY } from '@/lib/content/checks';
-import { finding, scanWith } from './fixtures';
+import { finding, scanWith, psOk } from './fixtures';
 
 const t = (id: string) => CHECK_COPY[id].clientTitle;
 const intro = 'We reviewed the homepage of example.com on 15 November 2026.';
@@ -51,6 +52,14 @@ describe('buildSummary', () => {
     const text = buildSummary(s, undefined, { ...defaultDraft(s), includedCheckIds: ['viewport'] }, 'UK');
     expect(text).toBe(`${intro} This report focuses on the areas you selected.`);
     expect(text).not.toMatch(/did not find|no issues/i);
+  });
+  it('does not claim a healthy site when failed performance findings are hidden', () => {
+    const s = scanWith([finding('viewport', 'pass', 'passed')]);
+    const o = psOk(true, 20);
+    const d = { ...withPerformanceDefaults(defaultDraft(s), performanceFindings(o)), includePerformance: false };
+    expect(buildSummary(s, o, d, 'UK')).toBe(`${intro} This report focuses on the areas you selected.`);
+    const shown = buildSummary(s, o, { ...d, includePerformance: true }, 'UK');
+    expect(shown).toContain('highlights 1 issue selected for review: 1 warning.');
   });
   it('does not count observations or info fails as issues', () => {
     const s = scanWith([finding('ai-crawlers', 'observation', 'info'), finding('llms-txt', 'fail', 'info')]);

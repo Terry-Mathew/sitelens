@@ -68,6 +68,18 @@ describe('storage', () => {
     expect(() => saveScan(record('x'))).toThrow(StorageFullError);
   });
 
+  it('treats the Firefox quota error as a full quota', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'NS_ERROR_DOM_QUOTA_REACHED');
+    });
+    expect(() => saveScan(record('x'))).toThrow(StorageFullError);
+    vi.restoreAllMocks();
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw Object.assign(new Error('full'), { code: 1014 });
+    });
+    expect(() => saveScan(record('y'))).toThrow(StorageFullError);
+  });
+
   it('survives localStorage throwing on access', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked');

@@ -48,6 +48,12 @@ describe('withPerformanceDefaults', () => {
     const again = withPerformanceDefaults(d, perf);
     expect(again.includedCheckIds.filter((id) => id === 'lab-performance')).toHaveLength(1);
   });
+  it('does not set the flag when the performance list is empty', () => {
+    const d = withPerformanceDefaults(defaultDraft(scan), []);
+    expect(d.performanceDefaulted).toBeUndefined();
+    const later = withPerformanceDefaults(d, performanceFindings(psOk(true)));
+    expect(later.includedCheckIds).toContain('lab-performance');
+  });
   it('does not re-add an id the user excluded after the first call', () => {
     const perf = performanceFindings(psOk(true));
     const d = withPerformanceDefaults(defaultDraft(scan), perf);
@@ -97,6 +103,13 @@ describe('reportSections', () => {
     expect(reportSections(scan, undefined, defaultDraft(scan)).selectionNote).toBe(false);
     const d = { ...defaultDraft(scan), includedCheckIds: ['https', 'viewport'] };
     expect(reportSections(scan, undefined, d).selectionNote).toBe(true);
+  });
+  it('flags hidden failed performance findings as a selection', () => {
+    const s = scanWith([finding('viewport', 'pass', 'passed')]);
+    const o = psOk(true, 20);
+    const d = { ...withPerformanceDefaults(defaultDraft(s), performanceFindings(o)), includePerformance: false };
+    expect(reportSections(s, o, d).selectionNote).toBe(true);
+    expect(reportSections(s, o, { ...d, includePerformance: true }).selectionNote).toBe(false);
   });
   it('lists included observations separately', () => {
     const d = { ...defaultDraft(scan), includedCheckIds: [...defaultDraft(scan).includedCheckIds, 'ai-crawlers'] };

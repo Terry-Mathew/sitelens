@@ -32,7 +32,13 @@ export class StorageFullError extends Error {
 
 function isQuotaError(e: unknown): boolean {
   const err = e as { name?: string; code?: number } | null;
-  return err?.name === 'QuotaExceededError' || err?.code === 22;
+  // Firefox uses its own name and code 1014.
+  return (
+    err?.name === 'QuotaExceededError' ||
+    err?.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    err?.code === 22 ||
+    err?.code === 1014
+  );
 }
 
 function read<T>(key: string, fallback: T): T {
