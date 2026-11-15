@@ -12,6 +12,7 @@ import type { ScanResponse } from '@/lib/types';
 
 const GENERIC_ERROR = 'The scan did not complete. Try again.';
 const NO_CONNECTION = 'SiteLens could not connect. Try again.';
+const SAVE_FAILED = 'SiteLens could not save the scan in this browser.';
 
 /** Starts a scan of one homepage. A scan can take up to one minute. */
 export function ScanForm() {
@@ -29,12 +30,21 @@ export function ScanForm() {
     setPending(true);
     setError(null);
 
+    let res: Response;
     try {
-      const res = await fetch('/api/scan', {
+      res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ url }),
       });
+    } catch {
+      setError(NO_CONNECTION);
+      running.current = false;
+      setPending(false);
+      return;
+    }
+
+    try {
       if (res.status === 401) {
         router.push('/login');
         return;
@@ -49,7 +59,7 @@ export function ScanForm() {
       const message = (data as { error?: unknown } | null)?.error;
       setError(typeof message === 'string' ? message : GENERIC_ERROR);
     } catch (e) {
-      setError(e instanceof StorageFullError ? e.message : NO_CONNECTION);
+      setError(e instanceof StorageFullError ? e.message : SAVE_FAILED);
     }
     running.current = false;
     setPending(false);
@@ -71,7 +81,7 @@ export function ScanForm() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'scan-url-error' : 'scan-url-help'}
+          aria-describedby={pending ? 'scan-url-status' : error ? 'scan-url-error' : 'scan-url-help'}
           className="h-11 text-base sm:flex-1"
         />
         <Button type="submit" size="lg" className="h-11 px-5" disabled={pending || url.trim() === ''}>
@@ -86,7 +96,7 @@ export function ScanForm() {
         </Button>
       </div>
       {pending ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p id="scan-url-status" role="status" className="text-sm text-muted-foreground">
           <span>Checking the homepage…</span> <span>This can take up to one minute.</span>
         </p>
       ) : error ? (

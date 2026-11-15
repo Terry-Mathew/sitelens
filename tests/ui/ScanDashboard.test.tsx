@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { pagespeedOk, scan } from './fixtures';
 
+const push = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 import { ScanDashboard } from '@/components/dashboard/ScanDashboard';
@@ -19,6 +20,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  push.mockReset();
   localStorage.clear();
 });
 
@@ -66,5 +68,37 @@ describe('ScanDashboard', () => {
     const strip = await screen.findByRole('region', { name: 'Summary' });
     expect(strip).toHaveTextContent('Critical0');
     expect(strip).toHaveTextContent('Opportunity1');
+  });
+
+  it('does not save a 200 body with an invalid shape', async () => {
+    const setPageSpeed = vi.spyOn(storage, 'setPageSpeed');
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true, data: { lab: { scores: {} } } })));
+
+    render(<ScanDashboard id="scan-1" />);
+    expect(await screen.findByText('Performance data unavailable')).toBeInTheDocument();
+    expect(screen.getByText(LIMITATION_TEXT.performance_unavailable, { selector: 'p' })).toBeInTheDocument();
+    expect(setPageSpeed).not.toHaveBeenCalled();
+    expect(storage.getScan('scan-1')?.pagespeed).toBeUndefined();
+  });
+
+  it('does not call /api/pagespeed when the record already has PageSpeed data', async () => {
+    storage.saveScan({ scan, pagespeed: pagespeedOk, draft: defaultDraft(scan) });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ScanDashboard id="scan-1" />);
+    expect(await screen.findByText('Google Lighthouse (lab, mobile)')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    // The defaults contract runs on load.
+    expect(storage.getScan('scan-1')?.draft.performanceDefaulted).toBe(true);
+  });
+
+  it('sends the user to the login page when /api/pagespeed returns 401', async () => {
+    const setPageSpeed = vi.spyOn(storage, 'setPageSpeed');
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Sign in again.' }, { status: 401 })));
+
+    render(<ScanDashboard id="scan-1" />);
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/login'));
+    expect(setPageSpeed).not.toHaveBeenCalled();
   });
 });

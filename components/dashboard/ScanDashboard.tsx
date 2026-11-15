@@ -22,10 +22,21 @@ import type { LimitationCode } from '@/lib/types';
 
 type PageSpeedReply = { kind: 'ok'; outcome: PageSpeedOutcome } | { kind: 'login' } | { kind: 'failed' };
 
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+const allNumbers = (o: unknown, keys: string[]) => isObject(o) && keys.every((k) => isNumber(o[k]));
+
+// The body is saved and read on every visit, so check its full shape. A bad shape is never saved.
 function isOutcome(value: unknown): value is PageSpeedOutcome {
-  if (!value || typeof value !== 'object' || !('ok' in value)) return false;
-  const v = value as { ok: unknown; data?: unknown; unavailable?: unknown };
-  return (v.ok === true && typeof v.data === 'object' && v.data !== null) || (v.ok === false && typeof v.unavailable === 'string');
+  if (!isObject(value)) return false;
+  if (value.ok === false) return typeof value.unavailable === 'string';
+  if (value.ok !== true || !isObject(value.data) || !isObject(value.data.lab)) return false;
+  const { lab, field } = value.data;
+  if (!allNumbers(lab.scores, ['performance', 'accessibility', 'bestPractices', 'seo'])) return false;
+  if (!allNumbers(lab.metrics, ['lcpMs', 'cls', 'tbtMs', 'fcpMs', 'speedIndexMs'])) return false;
+  if (field === null) return true;
+  if (!isObject(field) || (field.scope !== 'url' && field.scope !== 'origin')) return false;
+  return ['lcp', 'inp', 'cls'].every((k) => field[k] === undefined || allNumbers(field[k], ['p75']));
 }
 
 async function requestPageSpeed(url: string, ticket: string): Promise<PageSpeedReply> {
@@ -58,8 +69,10 @@ function hostname(url: string): string {
   }
 }
 
-function storageMessage(e: unknown): string | null {
-  return e instanceof StorageFullError ? e.message : null;
+const SAVE_FAILED = 'SiteLens could not save the change in this browser.';
+
+function storageMessage(e: unknown): string {
+  return e instanceof StorageFullError ? e.message : SAVE_FAILED;
 }
 
 function DashboardSkeleton() {
