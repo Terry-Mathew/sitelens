@@ -73,4 +73,15 @@ describe('site-reachable', () => {
     );
     expect(r.status).toBe('unable_to_check');
   });
+
+  it('an unknown failure reason → unable_to_check, never critical', () => {
+    const r = check.run(makePage({ homepage: { status: null, unreachableReason: 'Something else went wrong', rawHtml: null } }));
+    expect(r.status).toBe('unable_to_check');
+    expect(r.severity).toBe('info');
+  });
+
+  it('a 404 reason without a 404 status → unable_to_check', () => {
+    const r = check.run(makePage({ homepage: { status: 200, unreachableReason: 'The homepage was not found', rawHtml: null } }));
+    expect(r.status).toBe('unable_to_check');
+  });
 });

@@ -11,7 +11,9 @@ export const check: Check = {
   confidence: 'verified',
   run: (page) =>
     withHtml(page, ({ $, source }) => {
-      const text = $('title').first().text().trim();
+      // Use the document title. An inline SVG can also hold a title element.
+      const headTitle = $('head > title').first();
+      const text = (headTitle.length > 0 ? headTitle : $('title').not('svg title').first()).text().trim();
       if (text === '') {
         return { status: 'fail', severity: 'warning', evidence: { text: null, length: 0 }, source };
       }

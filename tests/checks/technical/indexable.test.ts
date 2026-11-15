@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { check } from '@/lib/checks/technical/indexable';
-import { makePage, htmlPage } from '../../helpers/page';
+import { makePage, htmlPage, blockedPage } from '../../helpers/page';
 
 const withRobots = (content: string) => {
   const html = htmlPage(`<meta name="robots" content="${content}">`);
@@ -59,5 +59,35 @@ describe('indexable', () => {
     expect(check.run(makePage({ ...base, homepage: { ...base.homepage, headers: { 'x-robots-tag': 'noindex' } } })).status).toBe('fail');
     // Without a header noindex the meta tag is unknown, so the result is not a pass.
     expect(check.run(makePage(base)).status).toBe('unable_to_check');
+  });
+
+  it('blocked page with an X-Robots-Tag noindex header → unable_to_check', () => {
+    const page = blockedPage();
+    page.homepage.headers = { 'x-robots-tag': 'noindex' };
+    const r = check.run(page);
+    expect(r.status).toBe('unable_to_check');
+    expect(r.severity).toBe('info');
+  });
+
+  it('503 with a noindex header → unable_to_check', () => {
+    const r = check.run(
+      makePage({
+        homepage: { status: 503, unreachableReason: 'The website returned a server error', rawHtml: null, headers: { 'x-robots-tag': 'noindex' } },
+        rendered: null,
+      }),
+    );
+    expect(r.status).toBe('unable_to_check');
+  });
+
+  it('ignores the header of a blocked response but still reads rendered HTML', () => {
+    const page = blockedPage();
+    page.homepage.headers = { 'x-robots-tag': 'noindex' };
+    page.rendered = { html: htmlPage('<title>x</title>') };
+    expect(check.run(page).status).toBe('pass');
+  });
+
+  it('200 with a noindex header → fail critical', () => {
+    const r = check.run(makePage({ homepage: { status: 200, headers: { 'x-robots-tag': 'noindex' } } }));
+    expect(r).toMatchObject({ status: 'fail', severity: 'critical', evidence: { where: 'header' } });
   });
 });

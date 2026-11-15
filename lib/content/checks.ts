@@ -14,7 +14,7 @@ export const CHECK_COPY: Record<string, CheckCopy> = {
     title: 'Secure connection (HTTPS)',
     clientTitle: 'Your website does not use a secure connection',
     whyItMatters:
-      'Browsers can show a "Not secure" warning on sites without HTTPS. Visitors may leave, and Google can treat the site as less trustworthy.',
+      'Browsers can show a "Not secure" warning on sites without HTTPS. Visitors may leave, and Google may treat the site as less trustworthy.',
     howToFix:
       'Install an SSL certificate. Most hosts offer one for free. Then make sure every page loads with https:// in the address.',
   },

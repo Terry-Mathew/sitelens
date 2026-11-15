@@ -33,10 +33,12 @@ export const check: Check = {
   confidence: 'verified',
   run(page): CheckOutcome {
     const view = readHtml(page);
-    const header = page.homepage.headers['x-robots-tag'] ?? null;
-    if (!view && Object.keys(page.homepage.headers).length === 0) {
-      return unable(homepageUnableReason(page));
-    }
+    // Block pages, challenge pages, 404 and 5xx responses often send noindex.
+    // Use the header only when the homepage was served normally.
+    const { status, blocked, unreachableReason } = page.homepage;
+    const served = status !== null && status >= 200 && status < 300 && !blocked && !unreachableReason;
+    const header = served ? (page.homepage.headers['x-robots-tag'] ?? null) : null;
+    if (!view && !served) return unable(homepageUnableReason(page));
 
     let metaRobots: string | null = null;
     if (view) {

@@ -2,10 +2,13 @@ import type { Check } from '@/lib/types';
 import { REASON } from '@/lib/gather/direct';
 import { homepageUnableReason, pass, unable } from '@/lib/checks/helpers';
 
-// A clear outage: no answer from the network, 404 or 410, or a 5xx after a retry.
-// A block, a timeout, a too-large page or an unusual status is not proof that the site is down.
-function isOutage(status: number | null): boolean {
-  return status === null || status === 404 || status === 410 || status >= 500;
+// A clear outage has a known cause: no answer from the network, 404 or 410, or a 5xx after a retry.
+// Compare the stable reason text from gathering. Any other failure is not proof that the site is down.
+function isOutage(status: number | null, reason: string | undefined): boolean {
+  if (reason === REASON.unreachable) return status === null;
+  if (reason === REASON.notFound) return status === 404 || status === 410;
+  if (reason === REASON.serverError) return status !== null && status >= 500;
+  return false;
 }
 
 export const check: Check = {
@@ -14,7 +17,7 @@ export const check: Check = {
   confidence: 'verified',
   run(page) {
     const { status, unreachableReason } = page.homepage;
-    if (unreachableReason && unreachableReason !== REASON.notAllowed && isOutage(status)) {
+    if (isOutage(status, unreachableReason)) {
       return {
         status: 'fail',
         severity: 'critical',

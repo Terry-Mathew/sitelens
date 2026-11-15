@@ -47,6 +47,14 @@ describe('title', () => {
     expect(r.evidence).toMatchObject({ text: 'a'.repeat(45), length: 45 });
   });
 
+  it('ignores an SVG title in the body', () => {
+    const html = htmlPage('', '<svg><title>Logo icon</title></svg>');
+    const r = check.run(makePage({ rendered: { html }, homepage: { rawHtml: html } }));
+    expect(r.status).toBe('fail');
+    expect(r.severity).toBe('warning');
+    expect(r.evidence).toMatchObject({ text: null });
+  });
+
   it('uses raw HTML when there is no rendered HTML', () => {
     const html = htmlPage(`<title>${'a'.repeat(45)}</title>`);
     const r = check.run(makePage({ rendered: null, homepage: { rawHtml: html } }));
