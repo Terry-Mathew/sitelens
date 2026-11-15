@@ -133,14 +133,14 @@ The builder may adjust thresholds slightly with a code comment explaining why. A
 
 | Check | Fails when | Default severity |
 |---|---|---|
-| Site reachable | DNS does not resolve, connection refused, or homepage returns 404/410, or 5xx on two attempts. **401, 403, 429, timeouts, or a detected bot-protection/challenge page → `unable_to_check`** ("This site blocked our automated check"), never a fail. *(Design call: a block is not proof the site is down.)* When the homepage can't be read, all HTML-based checks return `unable_to_check`; PageSpeed still runs (Google fetches the page itself). | Critical |
-| HTTPS | Final URL is not HTTPS | Critical |
+| Site reachable | DNS does not resolve, connection refused, or homepage returns 404/410, or 5xx on two attempts. **401, 403, 429, timeouts, or a detected bot-protection/challenge page → `unable_to_check`** ("This site blocked our automated check"), never a fail. *(Design call: a block is not proof the site is down.)* When the homepage can't be read, all HTML-based checks return `unable_to_check`; PageSpeed still runs (Google fetches the page itself). *Amended 2026-11-16: connection refused, a TLS failure, a reset, a temporary DNS failure, or too many redirects → `unable_to_check`. Only a DNS name that does not exist, 404/410, or 5xx on two attempts is a fail, and only when no browser render or http:// answer shows that the site loads.* | Critical |
+| HTTPS | Final URL is not HTTPS. *Amended 2026-11-16: SiteLens always scans the https:// address, also when the user types http://. A fail needs proof that https:// is absent: nothing answered on https:// and the http:// site works. A certificate problem on https:// → `unable_to_check`.* | Critical |
 | HTTP → HTTPS redirect | `http://` version does not redirect to HTTPS | Warning |
 | Redirect chain | More than 2 redirects to reach the homepage | Opportunity |
 | Homepage indexable | `<meta name="robots">` or `X-Robots-Tag` contains `noindex` | Critical |
 | robots.txt present | Reports present/absent (404). Unreachable → `unable_to_check` | Observation |
 | robots.txt allows crawling | Blocks all user-agents from `/` | Critical |
-| sitemap.xml present & valid | Missing, or not parseable XML (checks `/sitemap.xml` and any `Sitemap:` line in robots.txt) | Warning |
+| sitemap.xml present & valid | Missing, or not parseable XML (checks `/sitemap.xml` and any `Sitemap:` line in robots.txt). *Amended 2026-11-16: a plain-text list of URLs is valid. When no candidate is valid and one candidate could not be read, the result is `unable_to_check`.* | Warning |
 | Title tag | Missing, or length outside 30–60 characters | Missing: Warning · Length: Opportunity |
 | Meta description | Missing, or length outside 70–160 characters | Missing: Warning · Length: Opportunity |
 | Single H1 | Zero H1s, or more than one | Warning |
@@ -163,10 +163,10 @@ The builder may adjust thresholds slightly with a code comment explaining why. A
 
 | Check | Fails when | Default severity |
 |---|---|---|
-| Contact method present | No `tel:` link, `mailto:` link, or `<form>` found (heuristic) | Warning |
+| Contact method present | No `tel:` link, `mailto:` link, or `<form>` found (heuristic). *Amended 2026-11-16: these also count: a link to a contact page (path `contact`, `contact-us` or `get-in-touch`, or link text "Contact" / "Contact us"), an `sms:`, `wa.me` or `api.whatsapp.com` link, and an iframe from a known form service (for example Google Forms, Typeform, Jotform, HubSpot, Tally). A form counts only when it has a message box, a phone field, or an email field and a second text field. A search form or a one-field newsletter form does not count.* | Warning |
 | Click-to-call link | No `tel:` link | Opportunity |
 | Call-to-action present | No link/button whose text matches a list of action phrases (contact, call, book, quote, get started, buy, enquire, schedule, …) (heuristic) | Opportunity |
-| Analytics detected | No known analytics/tag script (GA4, Google Tag Manager, Meta Pixel, Plausible, Fathom, Matomo) | Opportunity — framed as "we could not detect a way to measure visitors and leads" |
+| Analytics detected | No known analytics/tag script (GA4, Google Tag Manager, Meta Pixel, Plausible, Fathom, Matomo). *Amended 2026-11-16: also Microsoft Clarity, Hotjar, HubSpot, Cloudflare Web Analytics and Segment. A Wix, Squarespace or Shopify site with no listed tool → `unable_to_check` ("This site uses {Platform}, which includes built-in visitor statistics."). The platform is never listed as a detected tool.* | Opportunity — framed as "we could not detect a way to measure visitors and leads" |
 
 **AI search readiness** (signals only; no guarantee of AI citations)
 
