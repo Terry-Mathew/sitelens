@@ -58,6 +58,8 @@ function readField(experience: unknown, scope: 'url' | 'origin'): PageSpeedResul
   const inp = readFieldMetric(metrics, 'INTERACTION_TO_NEXT_PAINT');
   // CrUX gives the CLS percentile multiplied by 100.
   const cls = readFieldMetric(metrics, 'CUMULATIVE_LAYOUT_SHIFT_SCORE', 100);
+  // A metric with an unknown rating or a bad percentile is dropped. No usable metric means no field data.
+  if (!lcp && !inp && !cls) return null;
   if (lcp) field.lcp = lcp;
   if (inp) field.inp = inp;
   if (cls) field.cls = cls;

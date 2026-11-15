@@ -74,6 +74,27 @@ describe('normalisePageSpeed', () => {
     expect(normalisePageSpeed(badMetric)).toBeNull();
   });
 
+  it('returns field null when no metric has a known rating and a numeric percentile', () => {
+    const input = structuredClone(full) as typeof full;
+    const metrics = input.loadingExperience.metrics as Record<string, { category: unknown; percentile: unknown }>;
+    metrics.LARGEST_CONTENTFUL_PAINT_MS.category = 'NONE';
+    metrics.INTERACTION_TO_NEXT_PAINT.percentile = '180';
+    delete (metrics as Record<string, unknown>).CUMULATIVE_LAYOUT_SHIFT_SCORE;
+    input.originLoadingExperience = { id: 'o', metrics: {} } as never;
+    expect(normalisePageSpeed(input)!.field).toBeNull();
+  });
+
+  it('keeps only the valid metric when another has an unknown rating', () => {
+    const input = structuredClone(full) as typeof full;
+    const metrics = input.loadingExperience.metrics as Record<string, { category: unknown }>;
+    metrics.LARGEST_CONTENTFUL_PAINT_MS.category = 'NONE';
+    delete (metrics as Record<string, unknown>).CUMULATIVE_LAYOUT_SHIFT_SCORE;
+    expect(normalisePageSpeed(input)!.field).toEqual({
+      scope: 'url',
+      inp: { p75: 180, rating: 'good' },
+    });
+  });
+
   it('ignores a field metric with an unknown rating', () => {
     const input = structuredClone(full) as typeof full;
     (input.loadingExperience.metrics.LARGEST_CONTENTFUL_PAINT_MS as { category: unknown }).category = 'NONE';

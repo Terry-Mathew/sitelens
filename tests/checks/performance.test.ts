@@ -50,6 +50,13 @@ describe('performanceFindings', () => {
     });
   });
 
+  it('field-cwv: a field block with no metrics is unable_to_check, never a pass', () => {
+    expect(find(ok(result({ field: { scope: 'url' } })), 'field-cwv')).toMatchObject({
+      status: 'unable_to_check',
+      unableReason: 'Google does not have enough real-user data for this site.',
+    });
+  });
+
   it('field-cwv: any poor metric is a warning that lists the poor metrics', () => {
     const field = {
       scope: 'origin' as const,

@@ -21,7 +21,7 @@ function labFinding(data: PageSpeedResult): Finding {
 
 function fieldFinding(data: PageSpeedResult): Finding {
   const field = data.field;
-  if (!field) return unableFinding('field-cwv', NO_FIELD_REASON);
+  if (!field || (!field.lcp && !field.inp && !field.cls)) return unableFinding('field-cwv', NO_FIELD_REASON);
 
   const metrics = { lcp: field.lcp, inp: field.inp, cls: field.cls };
   const poor = Object.entries(metrics)
