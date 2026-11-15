@@ -57,6 +57,51 @@ const fixtures: Record<string, PageData> = {
   }),
 };
 
+// Milestone review I2: in JavaScript-shell fallback the raw HTML is not what visitors see.
+const JS_SHELL_HTML_CHECKS = [
+  'title', 'meta-description', 'single-h1', 'heading-order', 'canonical', 'open-graph', 'img-alt',
+  'html-lang', 'viewport', 'structured-data', 'analytics', 'machine-readable-contact', 'copyright-year', 'indexable',
+];
+// A shell that would fail each HTML check if the checks graded it.
+const SHELL_WITH_GAPS =
+  '<html><head><meta name="robots" content="noindex"></head><body><div id="root"></div>' +
+  '<img src="/a.png"><h2>A</h2><h4>B</h4><p>© 2001</p></body></html>';
+const jsShellWithGaps = makePage({
+  rendered: null,
+  loadedWith: 'direct-fallback',
+  jsRendered: true,
+  homepage: { rawHtml: SHELL_WITH_GAPS },
+});
+
+describe('JavaScript-shell fallback', () => {
+  it('every check that reads the page HTML is unable_to_check with the JavaScript reason', () => {
+    const findings = runChecks(jsShellWithGaps);
+    for (const id of JS_SHELL_HTML_CHECKS) {
+      const f = findings.find((x) => x.checkId === id)!;
+      expect(f.status, id).toBe('unable_to_check');
+      expect(f.unableReason, id).toBe('This site loads its content with JavaScript');
+    }
+  });
+
+  it('gives no fail except no-js-content', () => {
+    for (const page of [fixtures.jsShellFallback, jsShellWithGaps]) {
+      const fails = runChecks(page).filter((f) => f.status === 'fail').map((f) => f.checkId);
+      expect(fails).toEqual(['no-js-content']);
+    }
+  });
+
+  it('indexable still fails on a noindex response header', () => {
+    const page = makePage({
+      rendered: null,
+      loadedWith: 'direct-fallback',
+      jsRendered: true,
+      homepage: { rawHtml: SHELL_WITH_GAPS, headers: { 'x-robots-tag': 'noindex' } },
+    });
+    const f = runChecks(page).find((x) => x.checkId === 'indexable')!;
+    expect(f).toMatchObject({ status: 'fail', severity: 'critical', evidence: { where: 'header' } });
+  });
+});
+
 describe('severity discipline', () => {
   it('no heuristic check ever returns critical', () => {
     for (const [name, page] of Object.entries(fixtures)) {

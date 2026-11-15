@@ -1,5 +1,5 @@
 import type { Check } from '@/lib/types';
-import { homepageUnableReason, pass, readHtml, unable } from '@/lib/checks/helpers';
+import { pass, withHtml } from '@/lib/checks/helpers';
 import { loadHtml } from '@/lib/html';
 
 // Each tool has patterns for a script address or for inline script text. Patterns use lower case.
@@ -26,17 +26,16 @@ export const check: Check = {
   id: 'analytics',
   category: 'conversion',
   confidence: 'heuristic',
-  run: (page) => {
-    const view = readHtml(page);
-    if (!view) return unable(homepageUnableReason(page));
-    // Read both versions. A tag manager can add a tool only in the rendered page.
-    const sources = [page.rendered?.html, page.homepage.rawHtml].filter(
-      (html): html is string => typeof html === 'string' && html !== '',
-    );
-    const haystack = sources.map(scriptText).join('\n');
-    const tools = TOOLS.filter((t) => t.patterns.some((p) => haystack.includes(p))).map((t) => t.name);
-    const evidence = { tools };
-    if (tools.length > 0) return pass(evidence, view.source);
-    return { status: 'fail', severity: 'opportunity', evidence, source: view.source };
-  },
+  run: (page) =>
+    withHtml(page, (view) => {
+      // Read both versions. A tag manager can add a tool only in the rendered page.
+      const sources = [page.rendered?.html, page.homepage.rawHtml].filter(
+        (html): html is string => typeof html === 'string' && html !== '',
+      );
+      const haystack = sources.map(scriptText).join('\n');
+      const tools = TOOLS.filter((t) => t.patterns.some((p) => haystack.includes(p))).map((t) => t.name);
+      const evidence = { tools };
+      if (tools.length > 0) return pass(evidence, view.source);
+      return { status: 'fail', severity: 'opportunity', evidence, source: view.source };
+    }),
 };
