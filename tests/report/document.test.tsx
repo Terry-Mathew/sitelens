@@ -116,6 +116,29 @@ describe('ReportDocument', () => {
     expect(t.match(/Observation from page code/g)).toHaveLength(1);
   });
 
+  it('prints the summary with lower-case client titles in the middle of the sentence', async () => {
+    const t = await text();
+    expect(t).toContain(
+      'The most important are: your website does not use a secure connection, we could not find a clear ' +
+        'call-to-action button or link on your homepage, and your homepage title needs attention.',
+    );
+  });
+
+  it('prints the selection note directly under the summary and in the scope section', async () => {
+    const note = 'This report presents a selection of findings from the review.';
+    const draft = without(defaultDraft(scan), 'favicon');
+    const t = await text({ draft });
+    const summary = normalise(buildSummary(scan, undefined, draft, 'UK'));
+    expect(t).toContain(`${summary} ${note} Findings`);
+    expect(t.split(note)).toHaveLength(3);
+  });
+
+  it('adds a scope line when some characters cannot be shown in the PDF font', async () => {
+    const line = 'Some characters could not be shown in this PDF font.';
+    expect(await text()).not.toContain(line);
+    expect(await text({ draft: { ...defaultDraft(scan), clientBusinessName: 'Łódź Dental' } })).toContain(line);
+  });
+
   it('puts the summary text in the report', async () => {
     const t = await text();
     expect(t).toContain(normalise(buildSummary(scan, undefined, defaultDraft(scan), 'UK')));

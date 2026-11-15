@@ -57,6 +57,19 @@ describe('ReportPanel logo', () => {
     expect(storage.getBranding().logoDataUrl).toBeUndefined();
   });
 
+  it('rejects a file named .png whose bytes are not an image', async () => {
+    setup();
+    upload(new File(['<svg xmlns="http://www.w3.org/2000/svg"></svg>'], 'logo.png', { type: 'image/png' }));
+    expect(await screen.findByText(LOGO_ERROR)).toBeInTheDocument();
+    expect(storage.getBranding().logoDataUrl).toBeUndefined();
+  });
+
+  it('saves a JPEG that has a .png name with the JPEG type', async () => {
+    setup();
+    upload(new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], 'logo.png', { type: 'image/png' }));
+    await waitFor(() => expect(storage.getBranding().logoDataUrl).toMatch(/^data:image\/jpeg;base64,/));
+  });
+
   it('reads a small JPG to a data URL and saves it with the branding', async () => {
     setup();
     upload(
@@ -120,6 +133,23 @@ describe('ReportPanel fields', () => {
     fireEvent.change(box, { target: { value: 'x'.repeat(1600) } });
     const sent = onDraftChange.mock.lastCall?.[0] as ReportDraft;
     expect(sent.nextSteps).toHaveLength(1500);
+  });
+});
+
+describe('ReportPanel font warning', () => {
+  const warning = 'Some characters in this report cannot be shown in the PDF font. Check the preview before you send it.';
+
+  it('warns when the report has characters outside the PDF font', () => {
+    setup();
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Your name or business'), { target: { value: 'Łukasz Web' } });
+    expect(screen.getByText(warning)).toBeInTheDocument();
+  });
+
+  it('warns for unprintable evidence in the scan', () => {
+    const cyr = { ...scan, findings: scan.findings.map((f) => (f.checkId === 'title' ? { ...f, evidence: { text: 'Дом' } } : f)) };
+    render(<ReportPanel scan={cyr} pagespeed={undefined} draft={defaultDraft(cyr)} onDraftChange={vi.fn()} />);
+    expect(screen.getByText(warning)).toBeInTheDocument();
   });
 });
 

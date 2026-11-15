@@ -122,6 +122,27 @@ describe('storage', () => {
     expect(getScan('a')?.pagespeed).toEqual(first);
   });
 
+  it('keeps a valid stored logo and drops an invalid one on read', () => {
+    const png = `data:image/png;base64,${btoa('\x89PNG\r\n\x1a\n' + 'rest')}`;
+    const jpeg = `data:image/jpeg;base64,${btoa('\xff\xd8\xff\xe0rest')}`;
+    saveBranding({ region: 'UK', logoDataUrl: png });
+    expect(getBranding().logoDataUrl).toBe(png);
+    saveBranding({ region: 'UK', logoDataUrl: jpeg });
+    expect(getBranding().logoDataUrl).toBe(jpeg);
+
+    const bad = [
+      `data:image/png;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg"></svg>')}`,
+      `data:image/svg+xml;base64,${btoa('<svg></svg>')}`,
+      `data:image/png;base64,${btoa('\xff\xd8\xff\xe0rest')}`,
+      'data:text/html,<p>hi</p>',
+      'not a data url',
+    ];
+    for (const logoDataUrl of bad) {
+      localStorage.setItem('sitelens:branding', JSON.stringify({ name: 'Acme', region: 'US', logoDataUrl }));
+      expect(getBranding()).toEqual({ name: 'Acme', region: 'US' });
+    }
+  });
+
   it('branding defaults to UK and round-trips', () => {
     expect(getBranding()).toEqual({ region: 'UK' });
     saveBranding({ name: 'Acme', region: 'US' });

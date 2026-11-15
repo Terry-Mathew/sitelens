@@ -1,8 +1,9 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Download } from 'lucide-react';
+import { Download, TriangleAlert } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import type { ReportDocumentProps } from '@/components/report/ReportDocument';
 import type { PageSpeedOutcome } from '@/lib/performance';
+import { imageKind, isValidLogoDataUrl } from '@/lib/logo';
+import { hasUnprintableText } from '@/lib/report/charset';
 import type { ReportDraft } from '@/lib/report/draft';
 import { formatDate, type Region } from '@/lib/report/region';
 import { StorageFullError, getBranding, saveBranding, type Branding } from '@/lib/storage';
@@ -28,6 +31,8 @@ const LOGO_TYPES = ['image/png', 'image/jpeg'];
 const LOGO_ERROR = 'Logo must be a PNG or JPG under 500 KB.';
 const BRANDING_SAVE_FAILED = 'SiteLens could not save the branding in this browser.';
 const EXPORT_FAILED = 'SiteLens could not make the PDF. Try again.';
+const FONT_WARNING =
+  'Some characters in this report cannot be shown in the PDF font. Check the preview before you send it.';
 
 const count = (n: number) => n.toLocaleString('en-US');
 
@@ -42,13 +47,29 @@ export function reportFileName(scan: ScanResult): string {
   return `website-review-${domain.replace(/[^a-z0-9.-]/gi, '-')}-${scan.scannedAt.slice(0, 10)}.pdf`;
 }
 
-function readAsDataUrl(file: File): Promise<string> {
+function read<T>(start: (reader: FileReader) => void, result: (reader: FileReader) => T): Promise<T> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+    reader.onload = () => resolve(result(reader));
     reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
+    start(reader);
   });
+}
+
+// Returns a data URL for a real PNG or JPEG, or null. The first bytes decide the type, not the file name.
+async function logoDataUrl(file: File): Promise<string | null> {
+  const head = await read(
+    (r) => r.readAsArrayBuffer(file.slice(0, 8)),
+    (r) => new Uint8Array(r.result as ArrayBuffer),
+  );
+  const kind = imageKind(head);
+  if (!kind) return null;
+  const url = await read(
+    (r) => r.readAsDataURL(file),
+    (r) => String(r.result),
+  );
+  const data = url.replace(/^data:[^,]*;base64,/, `data:image/${kind};base64,`);
+  return isValidLogoDataUrl(data) ? data : null;
 }
 
 function download(blob: Blob, name: string) {
@@ -74,6 +95,8 @@ export interface ReportPanelProps {
 export function ReportPanel({ scan, pagespeed, draft, onDraftChange }: ReportPanelProps) {
   const id = useId();
   const [branding, setBranding] = useState<Branding>(() => getBranding());
+  // The latest branding. The logo read is async, so it must not use an old copy from a closure.
+  const latestBranding = useRef(branding);
   const [brandingError, setBrandingError] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -82,8 +105,10 @@ export function ReportPanel({ scan, pagespeed, draft, onDraftChange }: ReportPan
   // The preview and the export get the same props.
   const documentProps: ReportDocumentProps = { scan, pagespeed, draft, branding };
   const nextSteps = draft.nextSteps ?? '';
+  const unprintable = hasUnprintableText(documentProps);
 
   function updateBranding(next: Branding) {
+    latestBranding.current = next;
     setBranding(next);
     try {
       saveBranding(next);
@@ -104,9 +129,13 @@ export function ReportPanel({ scan, pagespeed, draft, onDraftChange }: ReportPan
     }
     try {
       // The logo stays in this browser. It is never uploaded.
-      const logoDataUrl = await readAsDataUrl(file);
+      const data = await logoDataUrl(file);
+      if (!data) {
+        setLogoError(LOGO_ERROR);
+        return;
+      }
       setLogoError(null);
-      updateBranding({ ...branding, logoDataUrl });
+      updateBranding({ ...latestBranding.current, logoDataUrl: data });
     } catch {
       setLogoError(LOGO_ERROR);
     }
@@ -161,6 +190,12 @@ export function ReportPanel({ scan, pagespeed, draft, onDraftChange }: ReportPan
             {exporting ? 'Exporting' : 'Export PDF'}
           </Button>
         </div>
+        {unprintable && (
+          <Alert>
+            <TriangleAlert aria-hidden="true" />
+            <AlertDescription>{FONT_WARNING}</AlertDescription>
+          </Alert>
+        )}
         {exportError && (
           <p role="alert" className="text-sm text-destructive">
             {exportError}

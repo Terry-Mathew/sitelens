@@ -6,7 +6,11 @@ import { formatDate, pageSize } from '@/lib/report/region';
 import { CHECK_COPY } from '@/lib/content/checks';
 import { finding, scanWith, psOk } from './fixtures';
 
-const t = (id: string) => CHECK_COPY[id].clientTitle;
+// Client titles in the middle of a sentence start with a lower-case letter.
+const t = (id: string) => {
+  const title = CHECK_COPY[id].clientTitle;
+  return title.charAt(0).toLowerCase() + title.slice(1);
+};
 const intro = 'We reviewed the homepage of example.com on 15 November 2026.';
 
 describe('buildSummary', () => {
@@ -78,6 +82,36 @@ describe('buildSummary', () => {
     expect(buildSummary(s, undefined, defaultDraft(s), 'UK')).toMatch(/ 3 items could not be checked automatically\.$/);
     const one = scanWith([finding('sitemap', 'unable_to_check', 'info')]);
     expect(buildSummary(one, undefined, defaultDraft(one), 'UK')).toMatch(/ 1 item could not be checked automatically\.$/);
+  });
+  it('keeps an acronym at the start of a title upper-case', () => {
+    const s = scanWith([finding('title', 'fail', 'warning')]);
+    const copy = { ...CHECK_COPY.title };
+    CHECK_COPY.title = { ...copy, clientTitle: 'HTTPS is missing' };
+    try {
+      expect(buildSummary(s, undefined, defaultDraft(s), 'UK')).toContain('The most important is: HTTPS is missing.');
+    } finally {
+      CHECK_COPY.title = copy;
+    }
+  });
+  it('does not sound healthy when a limitation stopped most checks', () => {
+    for (const code of ['homepage_blocked', 'homepage_unreachable', 'non_html', 'too_large', 'js_fallback'] as const) {
+      const s = scanWith(
+        [finding('viewport', 'pass', 'passed'), finding('title', 'unable_to_check', 'info')],
+        { limitations: [code] },
+      );
+      expect(buildSummary(s, undefined, defaultDraft(s), 'UK')).toBe(
+        `${intro} We could not review most of the homepage automatically. The limitations section explains why. ` +
+          '1 item could not be checked automatically.',
+      );
+    }
+  });
+  it('limits the no-issue claim to the areas we could check when some items were not checked', () => {
+    const s = scanWith([finding('viewport', 'pass', 'passed'), finding('sitemap', 'unable_to_check', 'info')], {
+      limitations: ['sitemap_unavailable'],
+    });
+    expect(buildSummary(s, undefined, defaultDraft(s), 'UK')).toBe(
+      `${intro} We did not find significant issues in the areas we could check. 1 item could not be checked automatically.`,
+    );
   });
   it('uses the US date format', () => {
     const s = scanWith([]);

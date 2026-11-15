@@ -1,3 +1,4 @@
+import { isValidLogoDataUrl } from '@/lib/logo';
 import type { PageSpeedOutcome } from '@/lib/performance';
 import type { ReportDraft } from '@/lib/report/draft';
 import type { Region } from '@/lib/report/region';
@@ -105,7 +106,10 @@ export function deleteScan(id: string): void {
 
 export function getBranding(): Branding {
   const value = read<Partial<Branding> | null>(BRANDING_KEY, null);
-  return { ...value, region: value?.region === 'US' ? 'US' : 'UK' };
+  const branding: Branding = { ...value, region: value?.region === 'US' ? 'US' : 'UK' };
+  // A stored logo that is not a real PNG or JPEG would break every PDF. Drop it.
+  if ('logoDataUrl' in branding && !isValidLogoDataUrl(branding.logoDataUrl)) delete branding.logoDataUrl;
+  return branding;
 }
 
 export function saveBranding(branding: Branding): void {

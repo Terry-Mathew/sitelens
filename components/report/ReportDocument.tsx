@@ -1,3 +1,4 @@
+import { Children } from 'react';
 import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import {
   RATING_LABEL,
@@ -11,6 +12,7 @@ import { CHECK_COPY } from '@/lib/content/checks';
 import { LIMITATION_TEXT } from '@/lib/content/limitations';
 import type { CwvRating, FieldMetric, PageSpeedOutcome, PageSpeedResult } from '@/lib/performance';
 import { reportSections, type ReportDraft } from '@/lib/report/draft';
+import { hasUnprintableText } from '@/lib/report/charset';
 import { formatDate, pageSize } from '@/lib/report/region';
 import { buildSummary } from '@/lib/report/summary';
 import type { Branding } from '@/lib/storage';
@@ -107,10 +109,10 @@ const s = StyleSheet.create({
   intro: { color: C.muted, marginBottom: 14, maxWidth: 440 },
   lead: { fontSize: 11.5, lineHeight: 1.6, color: C.ink, maxWidth: 450 },
   paragraph: { maxWidth: 450, marginBottom: 6 },
+  selection: { marginTop: 10, maxWidth: 450, color: C.ink, fontWeight: 'bold' },
   // Findings
-  finding: { flexDirection: 'row', marginBottom: 22 },
-  bar: { width: 3, marginRight: 14, borderRadius: 1.5 },
-  findingBody: { flex: 1 },
+  // A left border, not a separate bar view. A bar view left an empty stub at the foot of a page.
+  finding: { marginBottom: 22, borderLeftWidth: 3, paddingLeft: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   severity: { fontWeight: 'bold', fontSize: 8.5, marginRight: 10 },
   heuristic: { fontSize: 8.5, color: C.muted },
@@ -173,11 +175,20 @@ const s = StyleSheet.create({
   unableTitle: { fontWeight: 'bold', color: C.ink },
 });
 
+const SELECTION_NOTE = 'This report presents a selection of findings from the review.';
+
 /** Inserts a line break into a word that is too long for the column. The characters do not change. */
 function breakLongWords(text: string, max: number): string {
   return text
     .split(' ')
-    .map((word) => (word.length > max ? (word.match(new RegExp(`.{1,${max}}`, 'g')) ?? [word]).join('\n') : word))
+    .map((word) => {
+      // Array.from keeps each emoji and each other surrogate pair as one character.
+      const chars = Array.from(word);
+      if (chars.length <= max) return word;
+      const parts: string[] = [];
+      for (let i = 0; i < chars.length; i += max) parts.push(chars.slice(i, i + max).join(''));
+      return parts.join('\n');
+    })
     .join(' ');
 }
 
@@ -249,14 +260,27 @@ function Cover({ title, domain, date, branding }: { title: string; domain: strin
   );
 }
 
-function Section({ title, first, children }: { title: string; first?: boolean; children: React.ReactNode }) {
+// The heading and its first `keep` children do not split over two pages, so a heading never
+// sits alone at the bottom of a page. (minPresenceAhead did not do this in react-pdf 4.9.)
+function Section({
+  title,
+  first,
+  keep = 1,
+  children,
+}: {
+  title: string;
+  first?: boolean;
+  keep?: number;
+  children: React.ReactNode;
+}) {
+  const items = Children.toArray(children);
   return (
     <View style={first ? s.sectionFirst : s.section}>
-      {/* Keep the heading on the same page as the start of its content. */}
-      <Text style={s.h2} minPresenceAhead={80}>
-        {title}
-      </Text>
-      {children}
+      <View wrap={false}>
+        <Text style={s.h2}>{title}</Text>
+        {items.slice(0, keep)}
+      </View>
+      {items.slice(keep)}
     </View>
   );
 }
@@ -294,30 +318,42 @@ function FindingBlock({ finding }: { finding: Finding }) {
   };
   const isFail = finding.status === 'fail';
   const evidenceCount = Object.keys(finding.evidence).length;
-  return (
-    <View style={s.finding}>
-      <View style={[s.bar, { backgroundColor: isFail ? sev.color : C.observation }]} />
-      <View style={s.findingBody}>
-        {/* Keep the label and the title together, and on the same page as the first part. */}
-        <View wrap={false} minPresenceAhead={60}>
-          <View style={s.tagRow}>
-            {isFail && <Text style={[s.severity, { color: sev.color }]}>{sev.label}</Text>}
-            {finding.confidence === 'heuristic' && <Text style={s.heuristic}>Observation from page code</Text>}
-          </View>
-          <Text style={s.findingTitle}>{copy?.clientTitle ?? finding.checkId}</Text>
-        </View>
-        {evidenceCount > 0 && (
-          // Short evidence stays on one page. Long evidence can split between rows.
-          <View wrap={evidenceCount > 6}>
-            <Text style={s.partLabel} minPresenceAhead={30}>
-              What we found
-            </Text>
-            <Evidence finding={finding} />
-          </View>
-        )}
-        {copy && <Part label="Why it matters">{copy.whyItMatters}</Part>}
-        {copy && isFail && <Part label="Recommended fix">{copy.howToFix}</Part>}
+  const header = (
+    <>
+      <View style={s.tagRow}>
+        {isFail && <Text style={[s.severity, { color: sev.color }]}>{sev.label}</Text>}
+        {finding.confidence === 'heuristic' && <Text style={s.heuristic}>Observation from page code</Text>}
       </View>
+      <Text style={s.findingTitle}>{copy?.clientTitle ?? finding.checkId}</Text>
+    </>
+  );
+  const parts = [
+    evidenceCount > 0 && (
+      <View key="evidence" wrap={evidenceCount > 6}>
+        <Text style={s.partLabel}>What we found</Text>
+        <Evidence finding={finding} />
+      </View>
+    ),
+    copy && (
+      <Part key="why" label="Why it matters">
+        {copy.whyItMatters}
+      </Part>
+    ),
+    copy && isFail && (
+      <Part key="fix" label="Recommended fix">
+        {copy.howToFix}
+      </Part>
+    ),
+  ].filter(Boolean);
+  const groupFirst = evidenceCount <= 6;
+  return (
+    <View style={[s.finding, { borderLeftColor: isFail ? sev.color : C.observation }]}>
+      {/* The label, the title, and the first part stay on one page. Long evidence can split. */}
+      <View wrap={false}>
+        {header}
+        {groupFirst && parts[0]}
+      </View>
+      {groupFirst ? parts.slice(1) : parts}
     </View>
   );
 }
@@ -334,7 +370,7 @@ function LabBlock({ data }: { data: PageSpeedResult }) {
     ['Time to show the main content (LCP)', formatSeconds(metrics.lcpMs)],
     ['Time to show the first content (FCP)', formatSeconds(metrics.fcpMs)],
     ['How fast the page fills in (Speed Index)', formatSeconds(metrics.speedIndexMs)],
-    ['Time the page cannot respond (TBT)', formatMs(metrics.tbtMs)],
+    ['Time the page is blocked while it loads (TBT)', formatMs(metrics.tbtMs)],
     ['Movement of the page as it loads (CLS)', formatCls(metrics.cls)],
   ];
   return (
@@ -394,16 +430,6 @@ function FieldBlock({ data }: { data: PageSpeedResult }) {
   );
 }
 
-function Performance({ outcome }: { outcome: PageSpeedOutcome | undefined }) {
-  if (!outcome || !outcome.ok) return <Text>{LIMITATION_TEXT.performance_unavailable}</Text>;
-  return (
-    <>
-      <LabBlock data={outcome.data} />
-      <FieldBlock data={outcome.data} />
-    </>
-  );
-}
-
 function Dash({ children }: { children: string }) {
   return (
     <View style={s.listItem} wrap={false}>
@@ -435,6 +461,7 @@ export function ReportDocument({ scan, pagespeed, draft, branding }: ReportDocum
   const title = `Website Review for ${clientName || domain}`;
   const sections = reportSections(scan, pagespeed, draft);
   const summary = buildSummary(scan, pagespeed, draft, region);
+  const unprintable = hasUnprintableText({ scan, pagespeed, draft, branding });
   const nextSteps = draft.nextSteps?.trim();
   const contact = [branding.name?.trim(), branding.contact?.trim()].filter(Boolean).join(', ');
 
@@ -453,12 +480,13 @@ export function ReportDocument({ scan, pagespeed, draft, branding }: ReportDocum
 
       <Page size={size} style={s.page} wrap>
         <Footer date={date} size={size} />
-        <Section title="Summary" first>
+        <Section title="Summary" first keep={2}>
           <Text style={s.lead}>{summary}</Text>
+          {sections.selectionNote && <Text style={s.selection}>{SELECTION_NOTE}</Text>}
         </Section>
 
         {sections.findings.length > 0 && (
-          <Section title="Findings">
+          <Section title="Findings" keep={2}>
             <Text style={s.intro}>The most important findings come first.</Text>
             {sections.findings.map((f) => (
               <FindingBlock key={f.checkId} finding={f} />
@@ -468,7 +496,9 @@ export function ReportDocument({ scan, pagespeed, draft, branding }: ReportDocum
 
         {draft.includePerformance && (
           <Section title="Performance">
-            <Performance outcome={pagespeed} />
+            {pagespeed?.ok
+              ? [<LabBlock key="lab" data={pagespeed.data} />, <FieldBlock key="field" data={pagespeed.data} />]
+              : [<Text key="none">{LIMITATION_TEXT.performance_unavailable}</Text>]}
           </Section>
         )}
 
@@ -484,7 +514,7 @@ export function ReportDocument({ scan, pagespeed, draft, branding }: ReportDocum
         )}
 
         {sections.observations.length > 0 && (
-          <Section title="Observations">
+          <Section title="Observations" keep={2}>
             <Text style={s.intro}>These are facts about the website. They are not problems.</Text>
             {sections.observations.map((f) => (
               <FindingBlock key={f.checkId} finding={f} />
@@ -493,7 +523,7 @@ export function ReportDocument({ scan, pagespeed, draft, branding }: ReportDocum
         )}
 
         {sections.couldNotCheck.length > 0 && (
-          <Section title="What we could not check">
+          <Section title="What we could not check" keep={2}>
             <Text style={s.intro}>
               We could not check these items automatically. They do not count as problems or as passes.
             </Text>
@@ -529,7 +559,8 @@ export function ReportDocument({ scan, pagespeed, draft, branding }: ReportDocum
           {limitations.map((code) => (
             <Dash key={code}>{LIMITATION_TEXT[code]}</Dash>
           ))}
-          {sections.selectionNote && <Dash>This report presents a selection of findings from the review.</Dash>}
+          {sections.selectionNote && <Dash>{SELECTION_NOTE}</Dash>}
+          {unprintable && <Dash>Some characters could not be shown in this PDF font.</Dash>}
         </Section>
       </Page>
     </Document>
