@@ -1,6 +1,6 @@
 import type { LimitationCode, PageData } from '@/lib/types';
 import { safeFetch, type SafeFetchResult } from '@/lib/security/safe-fetch';
-import { loadHtml } from '@/lib/html';
+import { hasChallengeMarker, loadHtml } from '@/lib/html';
 
 type Fetcher = typeof safeFetch;
 type Homepage = PageData['homepage'] & { finalUrl: string };
@@ -12,7 +12,6 @@ const SMALL_MAX_BYTES = 500 * 1024;
 const MAX_REDIRECTS = 5;
 
 const BLOCKED_STATUSES = new Set([401, 403, 429]);
-const CHALLENGE_MARKERS = ['cf-chl', 'challenge-platform', 'just a moment...'];
 
 // Fixed text only. The raw message from safeFetch can contain IP addresses.
 export const REASON = {
@@ -43,8 +42,7 @@ type Success = Extract<SafeFetchResult, { ok: true }>;
 
 function isChallengePage(result: Success): boolean {
   if (result.status !== 403 && result.status !== 503) return false;
-  const body = result.body.toLowerCase();
-  return CHALLENGE_MARKERS.some((marker) => body.includes(marker));
+  return hasChallengeMarker(result.body);
 }
 
 function fromFailure(url: string, reason: Extract<SafeFetchResult, { ok: false }>['reason']): Homepage {

@@ -103,6 +103,32 @@ describe('gather', () => {
     expect(fetchFavicon).toHaveBeenCalledWith('https://www.example.com', REAL);
   });
 
+  it('drops the Firecrawl HTML when the homepage is not an HTML page', async () => {
+    vi.mocked(fetchHomepage).mockResolvedValue(
+      homepage({ rawHtml: null, contentType: 'application/pdf', blockReason: 'The homepage is not an HTML page' }),
+    );
+    vi.mocked(homepageIssue).mockReturnValue('non_html');
+    vi.mocked(scrapeRendered).mockResolvedValue({ html: '<html><body><pre>%PDF-1.7</pre></body></html>' });
+    const page = await run();
+    expect(page.rendered).toBeNull();
+    expect(page.loadedWith).toBe('direct-fallback');
+    // The non_html limitation already explains why the page was not reviewed.
+    expect(page.limitations).toEqual(['non_html']);
+  });
+
+  it('starts the second stage when the homepage and robots finish, without waiting for Firecrawl', async () => {
+    let finishFirecrawl: (v: { html: string } | null) => void = () => {};
+    vi.mocked(scrapeRendered).mockReturnValue(new Promise((resolve) => (finishFirecrawl = resolve)));
+    const pending = run();
+    await vi.waitFor(() => {
+      expect(fetchSitemap).toHaveBeenCalled();
+      expect(checkHttpRedirect).toHaveBeenCalled();
+      expect(fetchFavicon).toHaveBeenCalled();
+    });
+    finishFirecrawl({ html: '<html>rendered</html>' });
+    expect((await pending).rendered).toEqual({ html: '<html>rendered</html>' });
+  });
+
   it('still returns PageData when the homepage is blocked', async () => {
     vi.mocked(fetchHomepage).mockResolvedValue(
       homepage({ blocked: true, blockReason: 'This site blocked our automated check', rawHtml: null, status: 403 }),

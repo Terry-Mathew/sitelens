@@ -11,7 +11,11 @@ vi.mock('@mendable/firecrawl-js', () => ({
   },
 }));
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { scrapeRendered } from '@/lib/gather/firecrawl';
+
+const fixture = (name: string) => readFileSync(join(__dirname, '..', 'fixtures', name), 'utf8');
 
 describe('scrapeRendered', () => {
   beforeEach(() => {
@@ -76,6 +80,28 @@ describe('scrapeRendered', () => {
     expect(await scrapeRendered('file:///etc/passwd')).toBeNull();
     expect(await scrapeRendered('not a url')).toBeNull();
     expect(scrape).not.toHaveBeenCalled();
+  });
+
+  it('returns null when a 200 answer is a bot challenge page', async () => {
+    scrape.mockResolvedValue({ rawHtml: fixture('cloudflare-challenge.html'), metadata: { statusCode: 200 } });
+    expect(await scrapeRendered('https://example.com/')).toBeNull();
+  });
+
+  it('keeps a normal page that only loads the Cloudflare script', async () => {
+    const html = `<html><body><h1>Plumber</h1><p>${'word '.repeat(300)}</p><script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script></body></html>`;
+    scrape.mockResolvedValue({ rawHtml: html, metadata: { statusCode: 200 } });
+    expect(await scrapeRendered('https://example.com/')).toEqual({ html });
+  });
+
+  it('returns null when the rendered HTML is larger than 5 MB', async () => {
+    scrape.mockResolvedValue({ rawHtml: `<html><body>${'x'.repeat(5 * 1024 * 1024)}</body></html>` });
+    expect(await scrapeRendered('https://example.com/')).toBeNull();
+  });
+
+  it('keeps rendered HTML at exactly 5 MB', async () => {
+    const html = 'x'.repeat(5 * 1024 * 1024);
+    scrape.mockResolvedValue({ rawHtml: html });
+    expect(await scrapeRendered('https://example.com/')).toEqual({ html });
   });
 
   it('never logs the URL or the key', async () => {
