@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { runChecks } from '@/lib/checks/run';
+import { checks } from '@/lib/checks/registry';
 import type { Check, PageData } from '@/lib/types';
 
 const page = {} as PageData;
@@ -77,7 +78,7 @@ describe('runChecks', () => {
     }).toThrow(TypeError);
   });
 
-  it('returns an empty list for the default empty registry', () => {
-    expect(runChecks(page)).toEqual([]);
+  it('returns one finding per registered check, even for an unusable page', () => {
+    expect(runChecks(page)).toHaveLength(checks.length);
   });
 });

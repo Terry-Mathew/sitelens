@@ -15,7 +15,7 @@ const BLOCKED_STATUSES = new Set([401, 403, 429]);
 const CHALLENGE_MARKERS = ['cf-chl', 'challenge-platform', 'just a moment...'];
 
 // Fixed text only. The raw message from safeFetch can contain IP addresses.
-const REASON = {
+export const REASON = {
   blocked: 'This site blocked our automated check',
   unreachable: 'The website could not be reached',
   timeout: 'The website did not respond in time',
