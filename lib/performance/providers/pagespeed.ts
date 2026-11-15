@@ -53,7 +53,9 @@ const FIELD_KEYS = ['LARGEST_CONTENTFUL_PAINT_MS', 'INTERACTION_TO_NEXT_PAINT', 
 function readField(experience: unknown, scope: 'url' | 'origin'): PageSpeedResult['field'] {
   const metrics = asObject(asObject(experience)?.metrics);
   if (!metrics || !FIELD_KEYS.some((key) => key in metrics)) return null;
-  const field: NonNullable<PageSpeedResult['field']> = { scope };
+  // When Google has no URL-level data, loadingExperience holds origin data and sets origin_fallback.
+  const fallback = asObject(experience)?.origin_fallback === true;
+  const field: NonNullable<PageSpeedResult['field']> = { scope: fallback ? 'origin' : scope };
   const lcp = readFieldMetric(metrics, 'LARGEST_CONTENTFUL_PAINT_MS');
   const inp = readFieldMetric(metrics, 'INTERACTION_TO_NEXT_PAINT');
   // CrUX gives the CLS percentile multiplied by 100.

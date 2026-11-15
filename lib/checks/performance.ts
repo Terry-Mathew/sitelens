@@ -27,17 +27,17 @@ function fieldFinding(data: PageSpeedResult): Finding {
   const poor = Object.entries(metrics)
     .filter(([, metric]) => metric?.rating === 'poor')
     .map(([name]) => name);
+  // Include only the metrics that Google returned. A fail and a pass both show the measured values.
+  const present = Object.fromEntries(Object.entries(metrics).filter(([, metric]) => metric !== undefined));
   if (poor.length > 0) {
     return {
       ...base,
       checkId: 'field-cwv',
       status: 'fail',
       severity: 'warning',
-      evidence: { poor, scope: field.scope },
+      evidence: { poor, scope: field.scope, ...present },
     };
   }
-  // Include only the metrics that Google returned.
-  const present = Object.fromEntries(Object.entries(metrics).filter(([, metric]) => metric !== undefined));
   return {
     ...base,
     checkId: 'field-cwv',

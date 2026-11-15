@@ -64,11 +64,23 @@ describe('performanceFindings', () => {
       inp: { p75: 150, rating: 'good' as const },
       cls: { p75: 0.3, rating: 'poor' as const },
     };
-    expect(find(ok(result({ field })), 'field-cwv')).toMatchObject({
-      status: 'fail',
-      severity: 'warning',
-      evidence: { poor: ['lcp', 'cls'], scope: 'origin' },
+    const f = find(ok(result({ field })), 'field-cwv');
+    expect(f).toMatchObject({ status: 'fail', severity: 'warning' });
+    // Product rule 2: the finding holds the measured values, not only the names.
+    expect(f.evidence).toEqual({
+      poor: ['lcp', 'cls'],
+      scope: 'origin',
+      lcp: { p75: 4500, rating: 'poor' },
+      inp: { p75: 150, rating: 'good' },
+      cls: { p75: 0.3, rating: 'poor' },
     });
+  });
+
+  it('field-cwv: a fail leaves out metrics that Google did not return', () => {
+    const field = { scope: 'url' as const, lcp: { p75: 5000, rating: 'poor' as const } };
+    const f = find(ok(result({ field })), 'field-cwv');
+    expect(f.status).toBe('fail');
+    expect(f.evidence).toEqual({ poor: ['lcp'], scope: 'url', lcp: { p75: 5000, rating: 'poor' } });
   });
 
   it('field-cwv: no poor metric passes, with only the present metrics as evidence', () => {

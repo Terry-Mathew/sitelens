@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import full from '@/tests/fixtures/psi-full.json';
 import noField from '@/tests/fixtures/psi-no-field.json';
 import originOnly from '@/tests/fixtures/psi-origin-only.json';
+import originFallback from '@/tests/fixtures/psi-origin-fallback.json';
 import errorBody from '@/tests/fixtures/psi-error.json';
 import { getPerformanceProvider, normalisePageSpeed, pageSpeedProvider } from '@/lib/performance';
 
@@ -41,6 +42,16 @@ describe('normalisePageSpeed', () => {
 
   it('uses origin scope when only originLoadingExperience has metrics', () => {
     const r = normalisePageSpeed(originOnly)!;
+    expect(r.field).toEqual({
+      scope: 'origin',
+      lcp: { p75: 4500, rating: 'poor' },
+      inp: { p75: 250, rating: 'needs-improvement' },
+      cls: { p75: 0.12, rating: 'needs-improvement' },
+    });
+  });
+
+  it('uses origin scope when loadingExperience holds origin data with origin_fallback true', () => {
+    const r = normalisePageSpeed(originFallback)!;
     expect(r.field).toEqual({
       scope: 'origin',
       lcp: { p75: 4500, rating: 'poor' },
