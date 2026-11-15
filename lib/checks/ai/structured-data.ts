@@ -1,17 +1,13 @@
 import type { Check } from '@/lib/types';
 import { pass, withHtml } from '@/lib/checks/helpers';
 import { parseJsonLd, shortType, typesOf } from '@/lib/checks/ai/jsonld';
-
-const BUSINESS_TYPES = new Set([
-  'Organization', 'LocalBusiness', 'Restaurant', 'Store', 'ProfessionalService',
-  'MedicalOrganization', 'LegalService', 'HomeAndConstructionBusiness',
-]);
+import { ORGANIZATION_TYPES } from '@/lib/checks/ai/organization-types';
 
 const MAX_EVIDENCE_TYPES = 20;
 
 function isBusinessType(type: string): boolean {
   const name = shortType(type);
-  return BUSINESS_TYPES.has(name) || name.endsWith('Business');
+  return ORGANIZATION_TYPES.has(name) || name.endsWith('Business');
 }
 
 export const check: Check = {

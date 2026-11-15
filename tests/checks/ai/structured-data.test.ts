@@ -23,6 +23,18 @@ describe('structured-data', () => {
     },
   );
 
+  it.each(['Dentist', 'Plumber', 'Bakery', 'ClothingStore', 'Attorney', 'Corporation', 'NGO', 'HairSalon',
+    'CafeOrCoffeeShop', 'RoofingContractor', 'RealEstateAgent', 'https://schema.org/Electrician'])(
+    'accepts the schema.org subtype %s',
+    (type) => {
+      expect(check.run(pageWith(ld(`{"@type":"${type}"}`))).status).toBe('pass');
+    },
+  );
+
+  it('WebSite alone → opportunity', () => {
+    expect(check.run(pageWith(ld('{"@type":"WebSite"}')))).toMatchObject({ status: 'fail', severity: 'opportunity' });
+  });
+
   it('25 types with Organization last → pass, evidence capped at 20', () => {
     const list = [...Array.from({ length: 24 }, (_, i) => ({ '@type': `T${i}` })), { '@type': 'Organization' }];
     const r = check.run(pageWith(ld(JSON.stringify(list))));
