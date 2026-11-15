@@ -100,6 +100,18 @@ describe('fetchHomepage', () => {
     expect(r.httpFallback).toBe(true);
   });
 
+  it('records "connect" as the fallback cause when https:// could not connect', async () => {
+    const f = fetcherOf(failure('network'), ok('<p>x</p>', { finalUrl: 'http://example.com/' }));
+    expect((await fetchHomepage('https://example.com/', f)).httpFallbackCause).toBe('connect');
+  });
+
+  it('tries http:// after a TLS failure and records "tls" as the fallback cause', async () => {
+    const f = fetcherOf(failure('tls'), ok('<p>x</p>', { finalUrl: 'http://example.com/' }));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(r).toMatchObject({ httpFallback: true, httpFallbackCause: 'tls', finalUrl: 'http://example.com/' });
+  });
+
   it('keeps the https:// failure when the http:// try also fails', async () => {
     const f = fetcherOf(failure('network'), failure('network'));
     const r = await fetchHomepage('https://example.com/', f);

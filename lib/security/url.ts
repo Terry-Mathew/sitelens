@@ -23,8 +23,9 @@ export function isLocalhostName(hostname: string): boolean {
 }
 
 /**
- * Normalises user input to the site's homepage (`https://host/`, or
- * `http://host/` only when the user typed http) and rejects anything SiteLens
+ * Normalises user input to the site's homepage, always `https://host/`. When
+ * https:// does not answer, the homepage fetch tries http://. This way a typed
+ * http:// address cannot hide a working secure site. It rejects anything SiteLens
  * must not fetch: non-http(s) schemes, credentials, non-standard ports,
  * localhost, private/reserved IP literals (including decimal, hex, octal and
  * IPv4-mapped IPv6 encodings, which the WHATWG URL parser canonicalises), and
@@ -83,5 +84,6 @@ export async function normaliseAndValidateUrl(
     }
   }
 
-  return { ok: true, url: `${url.origin}/` };
+  // Only ports 80 and 443 are allowed, so the https:// homepage is always on the default port.
+  return { ok: true, url: `https://${url.hostname}/` };
 }

@@ -230,6 +230,12 @@ describe('safeFetch', () => {
     expect(res).toMatchObject({ ok: false, reason: 'network' });
   });
 
+  it('reports a TLS failure as tls', async () => {
+    // The local server speaks plain HTTP, so the TLS handshake fails.
+    const res = await localFetch()(`https://site.test:${port}/c`, OPTS);
+    expect(res).toMatchObject({ ok: false, reason: 'tls' });
+  });
+
   describe('connection-time validation (real policy)', () => {
     it('DNS rebinding: validation passes then lookup at connect returns 127.0.0.1 → blocked_address', async () => {
       let calls = 0;

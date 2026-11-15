@@ -54,6 +54,8 @@ export interface PageData {
     rawHtml: string | null;
     // True when https:// failed at the connection or TLS step and the http:// answer is used.
     httpFallback?: boolean;
+    // Why https:// failed: 'connect' means no secure server answered, 'tls' means the TLS step failed.
+    httpFallbackCause?: 'connect' | 'tls';
   };
   httpRedirectsToHttps: boolean | null; // null = could not determine
   rendered: { html: string } | null; // Firecrawl output; null = fallback

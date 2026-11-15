@@ -19,6 +19,11 @@ export const check: Check = {
     if (page.homepage.httpFallback && page.rendered !== null) {
       return unable('The secure address loaded in a browser but not for our check', 'headers');
     }
+    // A server answered on https://, but our check did not accept its certificate.
+    // Browsers can repair some of these problems, for example an incomplete certificate chain.
+    if (page.homepage.httpFallback && page.homepage.httpFallbackCause === 'tls') {
+      return unable('The secure address has a certificate problem that our check could not accept', 'headers');
+    }
     const evidence = { finalUrl: page.finalUrl, protocol };
     if (protocol === 'https:') return pass(evidence, 'headers');
     return { status: 'fail', severity: 'critical', evidence, source: 'headers' };

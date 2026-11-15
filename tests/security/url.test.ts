@@ -18,10 +18,10 @@ describe('normaliseAndValidateUrl', () => {
     expect(res).toEqual({ ok: true, url: 'https://example.com/' });
   });
 
-  it('keeps http only when the user typed http', async () => {
+  it('always returns https, also when the user typed http', async () => {
     expect(await normaliseAndValidateUrl('http://example.com/page#x', resolver())).toEqual({
       ok: true,
-      url: 'http://example.com/',
+      url: 'https://example.com/',
     });
     expect(await normaliseAndValidateUrl('HTTPS://WWW.Example.com', resolver())).toEqual({
       ok: true,
@@ -36,7 +36,7 @@ describe('normaliseAndValidateUrl', () => {
     });
     expect(await normaliseAndValidateUrl('http://example.com:80', resolver())).toEqual({
       ok: true,
-      url: 'http://example.com/',
+      url: 'https://example.com/',
     });
   });
 

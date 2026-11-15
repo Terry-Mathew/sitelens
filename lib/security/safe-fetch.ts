@@ -14,12 +14,14 @@ export const SITELENS_USER_AGENT = 'Mozilla/5.0 (compatible; SiteLensBot/1.0)';
 export const DEFAULT_MAX_REDIRECTS = 5;
 
 // 'dns' means the name does not exist. 'dns_transient' means the lookup failed for a reason that can pass.
+// 'tls' means a server answered, but the TLS step failed (for example a certificate problem).
 export type SafeFetchReason =
   | 'timeout'
   | 'blocked_address'
   | 'too_many_redirects'
   | 'too_large'
   | 'network'
+  | 'tls'
   | 'dns'
   | 'dns_transient';
 
@@ -63,6 +65,11 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const DNS_NOT_FOUND_CODES = new Set(['ENOTFOUND', 'EAI_NONAME', 'EAI_NODATA', 'ENODATA']);
 const DNS_TRANSIENT_CODES = new Set(['EAI_AGAIN', 'EAI_FAIL', 'ESERVFAIL', 'ETIMEOUT']);
 const TIMEOUT_CODES = new Set(['ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']);
+const TLS_CODE_PREFIXES = ['CERT_', 'UNABLE_TO_', 'DEPTH_ZERO_', 'SELF_SIGNED_', 'ERR_TLS_', 'ERR_SSL_'];
+
+function isTlsCode(code: string): boolean {
+  return code === 'EPROTO' || TLS_CODE_PREFIXES.some((prefix) => code.startsWith(prefix));
+}
 
 type Failure = Extract<SafeFetchResult, { ok: false }>;
 const fail = (reason: SafeFetchReason, message: string): Failure => ({ ok: false, reason, message });
@@ -124,6 +131,9 @@ function classifyError(err: unknown, timedOut: boolean): Failure {
   }
   if (errors.some((e) => TIMEOUT_CODES.has(String(codeOf(e))))) {
     return fail('timeout', 'The request timed out.');
+  }
+  if (errors.some((e) => isTlsCode(String(codeOf(e))))) {
+    return fail('tls', 'The secure connection could not be set up.');
   }
   const message = err instanceof Error ? err.message : 'Unknown network error';
   return fail('network', `The request failed: ${message}`);

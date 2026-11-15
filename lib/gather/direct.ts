@@ -104,14 +104,15 @@ export async function fetchHomepage(url: string, fetcher: Fetcher = safeFetch): 
   let result = await fetcher(url, options);
   // Retry a server error once. A challenge page is not a server error.
   if (result.ok && result.status >= 500 && !isChallengePage(result)) result = await fetcher(url, options);
-  if (!result.ok && result.reason === 'network') {
+  if (!result.ok && (result.reason === 'network' || result.reason === 'tls')) {
     // The https:// connection or TLS step failed. The site can serve only http://.
-    // Use the http:// answer only when it is a 2xx. Then the HTTPS check fails on real evidence.
+    // Use the http:// answer only when it is a 2xx. The HTTPS check reads the cause.
     const httpUrl = httpVariant(url);
     if (httpUrl !== null) {
       const fallback = await fetcher(httpUrl, options);
       if (fallback.ok && fallback.status >= 200 && fallback.status < 300) {
-        return { ...fromResponse(fallback), httpFallback: true };
+        const httpFallbackCause = result.reason === 'tls' ? 'tls' : 'connect';
+        return { ...fromResponse(fallback), httpFallback: true, httpFallbackCause };
       }
     }
   }
