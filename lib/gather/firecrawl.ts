@@ -36,6 +36,9 @@ export async function scrapeRendered(url: string): Promise<{ html: string } | nu
     // Stop an unhandled rejection if the timeout wins the race.
     scrape.catch(() => undefined);
     const doc = await Promise.race([scrape, timeout]);
+    // An error or challenge page is not the real site. Treat it as rendering unavailable.
+    const status = doc?.metadata?.statusCode;
+    if (typeof status === 'number' && (status < 200 || status >= 300)) return null;
     const html = doc?.rawHtml;
     return typeof html === 'string' && html.trim() !== '' ? { html } : null;
   } catch {

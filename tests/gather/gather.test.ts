@@ -150,4 +150,19 @@ describe('gather', () => {
     await expect(gather('ftp://example.com/', () => NOW)).rejects.toThrow();
     expect(scrapeRendered).not.toHaveBeenCalled();
   });
+
+  it('degrades instead of rejecting when a fetch throws unexpectedly', async () => {
+    vi.mocked(fetchSitemap).mockRejectedValue(new Error('x'));
+    vi.mocked(checkHttpRedirect).mockRejectedValue(new Error('x'));
+    vi.mocked(fetchFavicon).mockRejectedValue(new Error('x'));
+    vi.mocked(fetchRobots).mockRejectedValue(new Error('x'));
+    vi.mocked(fetchLlmsTxt).mockRejectedValue(new Error('x'));
+    const page = await run();
+    expect(page.sitemap).toEqual({ state: 'error', url: null, isIndex: false });
+    expect(page.httpRedirectsToHttps).toBeNull();
+    expect(page.favicon).toEqual({ linkTag: false, icoStatus: null });
+    expect(page.robots).toEqual({ state: 'error', groups: [], sitemaps: [] });
+    expect(page.llmsTxt).toEqual({ present: null });
+    expect(page.limitations).toEqual(['robots_unavailable', 'sitemap_unavailable']);
+  });
 });

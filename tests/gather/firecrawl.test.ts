@@ -34,6 +34,18 @@ describe('scrapeRendered', () => {
     expect(ctor).toHaveBeenCalledWith({ apiKey: 'fc-test' });
   });
 
+  it.each([403, 404, 429, 503])('returns null when Firecrawl reports status %i', async (statusCode) => {
+    scrape.mockResolvedValue({ rawHtml: '<html>challenge</html>', metadata: { statusCode } });
+    expect(await scrapeRendered('https://example.com/')).toBeNull();
+  });
+
+  it('returns html for a 2xx status or a missing status', async () => {
+    scrape.mockResolvedValue({ rawHtml: '<html>ok</html>', metadata: { statusCode: 200 } });
+    expect(await scrapeRendered('https://example.com/')).toEqual({ html: '<html>ok</html>' });
+    scrape.mockResolvedValue({ rawHtml: '<html>ok</html>', metadata: {} });
+    expect(await scrapeRendered('https://example.com/')).toEqual({ html: '<html>ok</html>' });
+  });
+
   it('returns null without an API key and does not call the SDK', async () => {
     vi.stubEnv('FIRECRAWL_API_KEY', '');
     expect(await scrapeRendered('https://example.com/')).toBeNull();

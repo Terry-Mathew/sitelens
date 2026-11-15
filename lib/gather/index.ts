@@ -19,6 +19,15 @@ function buildLimitations(
   return [...new Set(list.filter((code): code is LimitationCode => code !== null))];
 }
 
+/** Runs one fetch and returns a fallback value if it throws, so one failure cannot reject the scan. */
+async function guarded<T>(task: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await task();
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Does all network work for one scan and returns the data the checks read.
  * The URL must already be validated by the caller.
@@ -28,11 +37,12 @@ export async function gather(inputUrl: string, now: () => Date = () => new Date(
   if (protocol !== 'https:' && protocol !== 'http:') throw new Error('gather needs an http(s) URL');
 
   // These four calls do not depend on each other.
+  // Robots and llms.txt use the input origin because the final URL is not known yet.
   const [homepage, rendered, robots, llmsTxt] = await Promise.all([
     fetchHomepage(inputUrl),
     scrapeRendered(inputUrl),
-    fetchRobots(inputOrigin),
-    fetchLlmsTxt(inputOrigin),
+    guarded(() => fetchRobots(inputOrigin), { state: 'error' as const, groups: [], sitemaps: [] }),
+    guarded(() => fetchLlmsTxt(inputOrigin), { present: null }),
   ]);
 
   // A failed fetch already sets finalUrl to the input URL.
@@ -41,9 +51,9 @@ export async function gather(inputUrl: string, now: () => Date = () => new Date(
 
   // These need the homepage or robots result.
   const [sitemap, httpRedirectsToHttps, favicon] = await Promise.all([
-    fetchSitemap(origin, robots.sitemaps),
-    checkHttpRedirect(finalUrl),
-    fetchFavicon(origin, homepage.rawHtml),
+    guarded(() => fetchSitemap(origin, robots.sitemaps), { state: 'error' as const, url: null, isIndex: false }),
+    guarded(() => checkHttpRedirect(finalUrl), null),
+    guarded(() => fetchFavicon(origin, homepage.rawHtml), { linkTag: false, icoStatus: null }),
   ]);
 
   const loadedWith: PageData['loadedWith'] = rendered ? 'firecrawl' : 'direct-fallback';
