@@ -16,9 +16,13 @@ import { check as viewport } from '@/lib/checks/technical/viewport';
 import { check as imgAlt } from '@/lib/checks/technical/img-alt';
 import { check as openGraph } from '@/lib/checks/technical/open-graph';
 import { check as favicon } from '@/lib/checks/technical/favicon';
+import { check as wordCount } from '@/lib/checks/content/word-count';
+import { check as copyrightYear } from '@/lib/checks/content/copyright-year';
+import { check as headingOrder } from '@/lib/checks/content/heading-order';
 
 export const checks: Check[] = [
   siteReachable, https, httpRedirect, redirectChain, indexable, robotsPresent,
   robotsAllows, sitemap, title, metaDescription, singleH1, canonical,
   htmlLang, viewport, imgAlt, openGraph, favicon,
+  wordCount, copyrightYear, headingOrder,
 ];

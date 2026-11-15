@@ -34,3 +34,19 @@ export function withHtml(
   const view = readHtml(page);
   return view ? run(view) : unable(homepageUnableReason(page));
 }
+
+export const JS_CONTENT_REASON = 'This site loads its content with JavaScript';
+
+/**
+ * Runs a check that depends on visible text or links.
+ * Returns unable_to_check when the page is a JavaScript app that only loaded as raw HTML.
+ */
+export function withTextHtml(
+  page: PageData,
+  run: (view: HtmlView) => CheckOutcome,
+): CheckOutcome {
+  const view = readHtml(page);
+  if (!view) return unable(homepageUnableReason(page));
+  if (page.loadedWith === 'direct-fallback' && page.jsRendered) return unable(JS_CONTENT_REASON, view.source);
+  return run(view);
+}

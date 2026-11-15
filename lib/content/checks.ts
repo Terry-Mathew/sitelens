@@ -138,4 +138,28 @@ export const CHECK_COPY: Record<string, CheckCopy> = {
     howToFix:
       'Add a square logo image as a favicon. Link it in the page head or place a favicon.ico file at the root of your site.',
   },
+  'word-count': {
+    title: 'Amount of page text',
+    clientTitle: 'We could not find much written text on your homepage',
+    whyItMatters:
+      'Pages with very little text give search engines less to understand. They also give visitors less reason to trust or contact you. This is a rule of thumb and not a proven fault.',
+    howToFix:
+      'Add short, clear text that says what you do, who you help, and where you work. Many homepages use 250 words or more.',
+  },
+  'copyright-year': {
+    title: 'Copyright year',
+    clientTitle: 'The copyright year in your footer may be out of date',
+    whyItMatters:
+      'An old year in the footer can make a site look unmaintained. Visitors may wonder if the business is still active.',
+    howToFix:
+      'Change the footer year to the current year. Better, ask your developer to make the year update by itself.',
+  },
+  'heading-order': {
+    title: 'Heading order',
+    clientTitle: 'The headings on your homepage skip a level in places',
+    whyItMatters:
+      'Headings work like an outline. When a level is skipped, screen readers and search engines can find the page harder to follow. This is a small issue.',
+    howToFix:
+      'Use heading levels in order. For example, put an H2 under an H1 before you use an H3. Choose levels for structure and not for text size.',
+  },
 };

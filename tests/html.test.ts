@@ -13,6 +13,11 @@ describe('visibleText', () => {
     expect(visibleText($)).toBe('Hello world');
   });
 
+  it('keeps words apart when minified HTML has no space between elements', () => {
+    const $ = loadHtml('<body><h1>Title</h1><p>First</p><a href="/">One</a><a href="/">Two</a><p>Hel<b>lo</b></p></body>');
+    expect(visibleText($)).toBe('Title First One Two Hello');
+  });
+
   it('does not change the loaded document', () => {
     const $ = loadHtml('<body><script>x</script><p>a</p></body>');
     visibleText($);
