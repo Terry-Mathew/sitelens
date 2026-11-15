@@ -32,7 +32,7 @@ export function getBackend(): Backend {
   return process.env.NODE_ENV === "production" ? { kind: "unconfigured" } : { kind: "dev" };
 }
 
-type LimiterName = "scanIp" | "scanGlobal" | "psiIp" | "psiGlobal" | "loginIp";
+type LimiterName = "scanIp" | "scanGlobal" | "psiIp" | "psiGlobal" | "loginIp" | "loginGlobal";
 
 const limiters = new Map<LimiterName, Ratelimit>();
 
@@ -47,6 +47,7 @@ function getLimiter(name: LimiterName, redis: Redis): Ratelimit {
       psiIp: perIpHour,
       psiGlobal: globalDay,
       loginIp: () => Ratelimit.slidingWindow(10, "15 m"),
+      loginGlobal: () => Ratelimit.slidingWindow(50, "15 m"),
     }[name]();
     limiter = new Ratelimit({ redis, limiter: config, prefix: `sitelens:${name}` });
     limiters.set(name, limiter);
@@ -83,12 +84,22 @@ export async function checkLoginLimit(ip: string): Promise<LimitResult> {
   const backend = getBackend();
   if (backend.kind === "dev") return { ok: true };
   if (backend.kind === "unconfigured") return { ok: false, message: MESSAGE_UNCONFIGURED };
-  const result = await getLimiter("loginIp", backend.redis).limit(`login:ip:${ip}`);
-  return result.success ? { ok: true } : { ok: false, message: MESSAGE_LOGIN };
+  const perIp = await getLimiter("loginIp", backend.redis).limit(`login:ip:${ip}`);
+  if (!perIp.success) return { ok: false, message: MESSAGE_LOGIN };
+  const global = await getLimiter("loginGlobal", backend.redis).limit("login:global");
+  return global.success ? { ok: true } : { ok: false, message: MESSAGE_LOGIN };
 }
 
-/** Returns the first x-forwarded-for entry, or "unknown". */
+/**
+ * Returns the client IP.
+ * A client can set the left entries of x-forwarded-for. Those entries are not safe.
+ * Use x-real-ip first, because Vercel sets it to the real client IP.
+ * Else use the right-most x-forwarded-for entry, which the nearest proxy added.
+ */
 export function getClientIp(req: Request): string {
-  const first = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return first || "unknown";
+  const real = req.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const entries = req.headers.get("x-forwarded-for")?.split(",") ?? [];
+  const last = entries[entries.length - 1]?.trim();
+  return last || "unknown";
 }

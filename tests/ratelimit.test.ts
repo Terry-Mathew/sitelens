@@ -90,6 +90,19 @@ describe("rate limits", () => {
     expect(await checkLoginLimit("9.9.9.9")).toEqual({ ok: false, message: MSG_LOGIN });
   });
 
+  it("denies login when the global login limiter denies", async () => {
+    limitResults.set("login:global", false);
+    const { checkLoginLimit } = await load();
+    expect(await checkLoginLimit("9.9.9.9")).toEqual({ ok: false, message: MSG_LOGIN });
+    expect(limitCalls).toEqual(["login:ip:9.9.9.9", "login:global"]);
+  });
+
+  it("uses a 50 per 15 minute window for the global login limiter", async () => {
+    const { checkLoginLimit } = await load();
+    await checkLoginLimit("9.9.9.9");
+    expect(created.map((c) => c.limiter)).toContainEqual({ kind: "sliding", n: 50, w: "15 m" });
+  });
+
   it("is a no-op when Upstash env is missing and NODE_ENV !== production", async () => {
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
@@ -129,15 +142,23 @@ describe("rate limits", () => {
 });
 
 describe("getClientIp", () => {
-  it("returns the first x-forwarded-for entry", async () => {
+  it("prefers x-real-ip over x-forwarded-for", async () => {
     const { getClientIp } = await load();
     const req = new Request("https://x.test", {
-      headers: { "x-forwarded-for": " 5.6.7.8 , 10.0.0.1" },
+      headers: { "x-real-ip": "1.2.3.4", "x-forwarded-for": "6.6.6.6, 1.2.3.4" },
     });
-    expect(getClientIp(req)).toBe("5.6.7.8");
+    expect(getClientIp(req)).toBe("1.2.3.4");
   });
 
-  it("returns 'unknown' without the header", async () => {
+  it("uses the right-most x-forwarded-for entry without x-real-ip", async () => {
+    const { getClientIp } = await load();
+    const req = new Request("https://x.test", {
+      headers: { "x-forwarded-for": "6.6.6.6, 5.5.5.5" },
+    });
+    expect(getClientIp(req)).toBe("5.5.5.5");
+  });
+
+  it("returns 'unknown' without either header", async () => {
     const { getClientIp } = await load();
     expect(getClientIp(new Request("https://x.test"))).toBe("unknown");
   });
