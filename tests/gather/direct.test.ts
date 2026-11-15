@@ -159,6 +159,14 @@ describe('checkHttpRedirect', () => {
     expect(await checkHttpRedirect('https://example.com/', fetcherOf(ok('', { finalUrl: 'http://example.com/' })))).toBe(false);
   });
 
+  it.each([403, 429, 503])('returns null when the http probe answers %i on http', async (status) => {
+    expect(await checkHttpRedirect('https://example.com/', fetcherOf(ok('', { status, finalUrl: 'http://example.com/' })))).toBeNull();
+  });
+
+  it('returns false when http answers 200 without a redirect to https', async () => {
+    expect(await checkHttpRedirect('https://example.com/', fetcherOf(ok('', { status: 200, finalUrl: 'http://example.com/' })))).toBe(false);
+  });
+
   it('returns null on error', async () => {
     expect(await checkHttpRedirect('https://example.com/', fetcherOf(failure('network')))).toBeNull();
   });
@@ -191,9 +199,19 @@ describe('fetchFavicon', () => {
   });
 
   it('falls back to GET when HEAD is not allowed', async () => {
-    const f = fetcherOf(ok('', { status: 405 }), ok('', { status: 200 }));
+    const f = fetcherOf(ok('', { status: 405 }), ok('', { status: 200, contentType: 'image/x-icon' }));
     expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(200);
     expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a 200 text/html answer (soft 404) as icoStatus 404', async () => {
+    const f = fetcherOf(ok('<html>app</html>', { status: 200, contentType: 'text/html; charset=utf-8' }));
+    expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(404);
+  });
+
+  it('keeps the real status for a 200 image/x-icon answer', async () => {
+    const f = fetcherOf(ok('', { status: 200, contentType: 'image/x-icon' }));
+    expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(200);
   });
 
   it('returns icoStatus null on error', async () => {

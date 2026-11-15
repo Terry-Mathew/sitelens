@@ -90,6 +90,16 @@ describe('fetchRobots', () => {
     expect(f).toHaveBeenCalledWith('https://example.com/robots.txt', { timeoutMs: 5000, maxBytes: 500 * 1024 });
   });
 
+  it('returns missing for a 200 text/html answer (soft 404)', async () => {
+    const r = await fetchRobots('https://example.com', vi.fn().mockResolvedValue({ ...ok('<html></html>'), headers: { 'content-type': 'text/html' } }));
+    expect(r).toEqual({ state: 'missing', groups: [], sitemaps: [] });
+  });
+
+  it('returns missing for a 200 body that starts with a doctype, whatever the content type', async () => {
+    const r = await fetchRobots('https://example.com', vi.fn().mockResolvedValue(ok('  <!DOCTYPE html><html></html>')));
+    expect(r.state).toBe('missing');
+  });
+
   it('returns missing for 404', async () => {
     const r = await fetchRobots('https://example.com', vi.fn().mockResolvedValue(ok('nope', 404)));
     expect(r).toEqual({ state: 'missing', groups: [], sitemaps: [] });

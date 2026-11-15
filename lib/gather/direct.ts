@@ -110,6 +110,8 @@ export async function checkHttpRedirect(finalUrl: string, fetcher: Fetcher = saf
     maxRedirects: MAX_REDIRECTS,
   });
   if (!result.ok) return null;
+  // A 403, 429 or 5xx on http:// does not show whether a redirect exists.
+  if (result.status < 200 || result.status >= 400) return null;
   try {
     return new URL(result.finalUrl).protocol === 'https:';
   } catch {
@@ -134,7 +136,12 @@ export async function fetchFavicon(
   if (result.ok && (result.status === 405 || result.status === 501)) {
     result = await fetcher(icoUrl, { timeoutMs: SMALL_TIMEOUT_MS, maxBytes: SMALL_MAX_BYTES });
   }
-  return { linkTag, icoStatus: result.ok ? result.status : null };
+  if (!result.ok) return { linkTag, icoStatus: null };
+  // Many single-page apps answer 200 with an HTML page for any path (a soft 404).
+  // That page is not an icon, so report it as 404.
+  const mime = (result.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  const softNotFound = result.status === 200 && mime === 'text/html';
+  return { linkTag, icoStatus: softNotFound ? 404 : result.status };
 }
 
 export async function fetchLlmsTxt(origin: string, fetcher: Fetcher = safeFetch): Promise<PageData['llmsTxt']> {

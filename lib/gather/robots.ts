@@ -77,5 +77,10 @@ export async function fetchRobots(origin: string, fetcher: Fetcher = safeFetch):
   if (!result.ok) return { state: 'error', groups: [], sitemaps: [] };
   if (result.status === 404 || result.status === 410) return { state: 'missing', groups: [], sitemaps: [] };
   if (result.status !== 200) return { state: 'error', groups: [], sitemaps: [] };
+  // A 200 HTML page is a soft 404 (often a single-page app). It is not a robots file.
+  const mime = (result.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  if (mime === 'text/html' || /^\s*<(!doctype|html)/i.test(result.body)) {
+    return { state: 'missing', groups: [], sitemaps: [] };
+  }
   return { state: 'found', ...parseRobots(result.body) };
 }
