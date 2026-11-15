@@ -11,7 +11,7 @@ Stack: Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Firecrawl, Che
    - `ACCESS_CODE`: the shared code that users type to enter the app.
    - `SESSION_SECRET`: a long random string. Make one with `openssl rand -hex 32`.
    - `FIRECRAWL_API_KEY`: optional. Without it, SiteLens loads the page with its own fetcher. The scan then shows the limitation "firecrawl_unavailable", and JavaScript-only content is not seen.
-   - `PAGESPEED_API_KEY`: optional locally. Without it, Google limits requests and the performance panel shows "unavailable".
+   - `PAGESPEED_API_KEY`: optional locally, required in production. Without it, Google limits requests and the performance panel shows "Performance data was unavailable at the time of the review." A key or quota problem shows the same neutral text, so it does not blame the client site.
    - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional locally. Without them, rate limits are off in development. SiteLens also accepts the Vercel KV names `KV_REST_API_URL` and `KV_REST_API_TOKEN`. In production (this includes Vercel Preview deployments), these values are required. When they are missing, login, scans and PageSpeed all stop with the message "The service is not available. Try again later." (HTTP 503).
 3. Run `npm run dev` and open http://localhost:3000.
 
@@ -29,7 +29,7 @@ Do these steps yourself. Do not add a payment method to any service for v1.
 
 1. **Vercel**: create an account and connect the repository. Do not deploy until you approve it.
 2. **Upstash**: create a free Redis database. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. If you connect Upstash through the Vercel Marketplace, Vercel can create `KV_REST_API_URL` and `KV_REST_API_TOKEN` instead. SiteLens accepts both sets of names. Check the names in the Vercel dashboard.
-3. **Google PageSpeed**: in Google Cloud, enable the PageSpeed Insights API. Create an API key and restrict it to that API. Set a daily quota cap on the key. Use it as `PAGESPEED_API_KEY`.
+3. **Google PageSpeed**: in Google Cloud, enable the PageSpeed Insights API. Create an API key and restrict it to that API. Set a daily quota cap on the key at 100 queries or more, because SiteLens allows up to 100 PageSpeed checks each day. Use it as `PAGESPEED_API_KEY`.
 4. **Firecrawl**: create a free account (no payment method). Copy the key to `FIRECRAWL_API_KEY`.
 5. **Access**: choose an `ACCESS_CODE` and make a random `SESSION_SECRET`.
 6. **Review the text**: read the "why it matters" and "how to fix" text for every check in `lib/content/` before you share the app.

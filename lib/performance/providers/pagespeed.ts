@@ -11,7 +11,10 @@ const TIMEOUT_MS = 60_000;
 const CATEGORIES = ['performance', 'accessibility', 'best-practices', 'seo'];
 
 const UNAVAILABLE_TIMEOUT = 'Google PageSpeed did not respond in time.';
+// Use this text only when Google reports a Lighthouse error about the tested page.
 const UNAVAILABLE_FAILED = 'Google PageSpeed could not test this page.';
+// Neutral text for every other failure: a quota or key problem, a Google error, or an unknown shape.
+// It must not blame the client site.
 const UNAVAILABLE_SHAPE = 'Performance data was unavailable at the time of the review.';
 
 const RATINGS: Record<string, CwvRating> = {
@@ -107,6 +110,18 @@ export function normalisePageSpeed(json: unknown): PageSpeedResult | null {
   };
 }
 
+/** True when the Google error body is a Lighthouse error about the tested page. */
+function isPageError(body: unknown): boolean {
+  const error = asObject(asObject(body)?.error);
+  if (error === null) return false;
+  const messages = [error.message, ...(Array.isArray(error.errors) ? error.errors : []).map((e) => asObject(e)?.message)];
+  const domains = (Array.isArray(error.errors) ? error.errors : []).map((e) => asObject(e)?.domain);
+  return (
+    domains.includes('lighthouseError') ||
+    messages.some((m) => typeof m === 'string' && m.toLowerCase().includes('lighthouse returned error'))
+  );
+}
+
 function buildRequestUrl(url: string): string {
   const params = new URLSearchParams({ url, strategy: 'mobile' });
   for (const category of CATEGORIES) params.append('category', category);
@@ -125,17 +140,19 @@ export const pageSpeedProvider: PerformanceProvider = {
       response = await fetch(buildRequestUrl(url), { signal: AbortSignal.timeout(TIMEOUT_MS) });
     } catch (error) {
       const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
-      return { ok: false, unavailable: timedOut ? UNAVAILABLE_TIMEOUT : UNAVAILABLE_FAILED };
+      return { ok: false, unavailable: timedOut ? UNAVAILABLE_TIMEOUT : UNAVAILABLE_SHAPE };
     }
 
     let body: unknown;
     try {
       body = await response.json();
     } catch {
-      return { ok: false, unavailable: response.ok ? UNAVAILABLE_SHAPE : UNAVAILABLE_FAILED };
+      return { ok: false, unavailable: UNAVAILABLE_SHAPE };
     }
     if (!response.ok || asObject(body)?.error !== undefined) {
-      return { ok: false, unavailable: UNAVAILABLE_FAILED };
+      // A 403 or 429 is a key or quota problem of SiteLens, not of the page.
+      const quotaOrKey = response.status === 403 || response.status === 429;
+      return { ok: false, unavailable: !quotaOrKey && isPageError(body) ? UNAVAILABLE_FAILED : UNAVAILABLE_SHAPE };
     }
 
     const data = normalisePageSpeed(body);

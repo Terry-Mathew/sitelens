@@ -9,6 +9,7 @@ import { getPerformanceProvider, normalisePageSpeed, pageSpeedProvider } from '@
 const UNAVAILABLE_TIMEOUT = 'Google PageSpeed did not respond in time.';
 const UNAVAILABLE_FAILED = 'Google PageSpeed could not test this page.';
 const UNAVAILABLE_SHAPE = 'Performance data was unavailable at the time of the review.';
+const UNAVAILABLE_NEUTRAL = UNAVAILABLE_SHAPE;
 
 describe('normalisePageSpeed', () => {
   it('normalises scores x100 rounded and lab metrics from audits', () => {
@@ -181,12 +182,32 @@ describe('pageSpeedProvider', () => {
     });
   });
 
-  it('returns unavailable on a network failure, with no raw error text', async () => {
+  it('returns the neutral text on a network failure, with no raw error text', async () => {
     fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED 1.2.3.4:443 https://example.com'));
     expect(await pageSpeedProvider.fetch('https://example.com/')).toEqual({
       ok: false,
-      unavailable: UNAVAILABLE_FAILED,
+      unavailable: UNAVAILABLE_NEUTRAL,
     });
+  });
+
+  const googleError = (code: number, status: string, reason: string, message: string) => ({
+    error: { code, message, errors: [{ message, domain: 'global', reason }], status },
+  });
+
+  it.each([
+    ['a 429 quota error', 429, googleError(429, 'RESOURCE_EXHAUSTED', 'rateLimitExceeded', "Quota exceeded for quota metric 'Queries per day'.")],
+    ['a 403 API not enabled error', 403, googleError(403, 'PERMISSION_DENIED', 'forbidden', 'PageSpeed Insights API has not been used in project 1 before or it is disabled.')],
+    ['a 400 invalid key error', 400, googleError(400, 'INVALID_ARGUMENT', 'badRequest', 'API key not valid. Please pass a valid API key.')],
+    ['a 200 body with a quota error', 200, googleError(429, 'RESOURCE_EXHAUSTED', 'rateLimitExceeded', 'Quota exceeded.')],
+    ['a 500 error that is not about the page', 500, googleError(500, 'INTERNAL', 'backendError', 'Internal error encountered.')],
+  ])('returns the neutral text for %s (it does not blame the page)', async (_name, status, body) => {
+    fetchMock.mockResolvedValue(json(body, status));
+    expect(await pageSpeedProvider.fetch('https://example.com/')).toEqual({ ok: false, unavailable: UNAVAILABLE_NEUTRAL });
+  });
+
+  it('returns the neutral text for a 429 with a body that is not JSON', async () => {
+    fetchMock.mockResolvedValue(new Response('Too Many Requests', { status: 429 }));
+    expect(await pageSpeedProvider.fetch('https://example.com/')).toEqual({ ok: false, unavailable: UNAVAILABLE_NEUTRAL });
   });
 
   it('returns the shape message when the body is not JSON', async () => {
