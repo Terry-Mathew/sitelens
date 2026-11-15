@@ -194,4 +194,44 @@ export const CHECK_COPY: Record<string, CheckCopy> = {
     howToFix:
       'Ask your developer which tool you use. If you use none, add a privacy-friendly tool such as Plausible or Google Analytics. Track form sends and phone taps as goals.',
   },
+  'ai-crawlers': {
+    title: 'AI crawler access',
+    clientTitle: 'Which AI tools your website lets in',
+    whyItMatters:
+      'AI search tools use crawlers to read websites. Your robots.txt file says which crawlers can visit. This is a fact about your settings. It is not a fault. Access does not guarantee that an AI tool will mention your business.',
+    howToFix:
+      'Decide if you want AI tools to read your site. To change access, ask your developer to edit the robots.txt file. Keep any block that you chose on purpose.',
+  },
+  'no-js-content': {
+    title: 'Content without JavaScript',
+    clientTitle: 'Most of your page text may not show without JavaScript',
+    whyItMatters:
+      'Most AI tools do not run JavaScript. If your text loads only with JavaScript, these tools may see a nearly empty page. They may then not read what your business offers.',
+    howToFix:
+      'Ask your developer to send the main page text in the first page load. Server-side rendering or a static page can do this. Then compare the page with JavaScript off.',
+  },
+  'structured-data': {
+    title: 'Business structured data',
+    clientTitle: 'We could not find business details marked up for search engines and AI tools',
+    whyItMatters:
+      'Structured data is a short block of code that states facts about your business in a standard form. Search engines and AI tools can read it with less guessing. It may help them describe your business correctly. It does not guarantee a result.',
+    howToFix:
+      'Ask your developer to add Organization or LocalBusiness data in JSON-LD form. Include your name, address, phone number, and opening hours. Then test it with Google Rich Results Test.',
+  },
+  'machine-readable-contact': {
+    title: 'Contact details in a readable format',
+    clientTitle: 'We could not find your phone number or address in a format that search engines and AI tools can reliably read',
+    whyItMatters:
+      'We could not find your phone number or address in a format that search engines and AI tools can reliably read. Your details may be on the page as plain text. A standard format can help these tools use them correctly.',
+    howToFix:
+      'Show your phone number as a tel: link. Put your address in an address element. Add both to your LocalBusiness structured data.',
+  },
+  'llms-txt': {
+    title: 'llms.txt file',
+    clientTitle: 'Whether your website has an llms.txt file',
+    whyItMatters:
+      'An llms.txt file is an emerging convention. It gives AI tools a short guide to your site. It has no proven effect on AI results today. This is a fact about your site. It is not a fault.',
+    howToFix:
+      'This is optional. If you want one, ask your developer to add a short llms.txt file at the root of your site. Do not expect a measurable change.',
+  },
 };

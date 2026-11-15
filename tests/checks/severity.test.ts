@@ -27,6 +27,8 @@ const NON_HTML_INPUTS = new Set([
   'sitemap',
   'favicon',
   'indexable',
+  'ai-crawlers',
+  'llms-txt',
 ]);
 
 const bareHtml = htmlPage('', '<p>hi</p>', '');
@@ -113,6 +115,22 @@ describe('severity discipline', () => {
     const a = runChecks(page);
     const b = runChecks(page);
     a.forEach((f, i) => expect(f.evidence).not.toBe(b[i].evidence));
+  });
+
+  it('registers the five AI search readiness checks', () => {
+    const ids = checks.filter((c) => c.category === 'ai-readiness').map((c) => c.id);
+    expect(ids.sort()).toEqual(['ai-crawlers', 'llms-txt', 'machine-readable-contact', 'no-js-content', 'structured-data']);
+    for (const id of ['machine-readable-contact', 'no-js-content']) {
+      expect(checks.find((c) => c.id === id)?.confidence).toBe('heuristic');
+    }
+  });
+
+  it('ai-crawlers and llms-txt only ever observe or are unable', () => {
+    for (const page of Object.values(fixtures)) {
+      for (const f of runChecks(page).filter((x) => ['ai-crawlers', 'llms-txt'].includes(x.checkId))) {
+        expect(['observation', 'unable_to_check']).toContain(f.status);
+      }
+    }
   });
 
   it('registers each check id once', () => {

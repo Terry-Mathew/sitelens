@@ -23,6 +23,11 @@ import { check as contactMethod } from '@/lib/checks/conversion/contact-method';
 import { check as clickToCall } from '@/lib/checks/conversion/click-to-call';
 import { check as cta } from '@/lib/checks/conversion/cta';
 import { check as analytics } from '@/lib/checks/conversion/analytics';
+import { check as aiCrawlers } from '@/lib/checks/ai/ai-crawlers';
+import { check as noJsContent } from '@/lib/checks/ai/no-js-content';
+import { check as structuredData } from '@/lib/checks/ai/structured-data';
+import { check as machineReadableContact } from '@/lib/checks/ai/machine-readable-contact';
+import { check as llmsTxt } from '@/lib/checks/ai/llms-txt';
 
 export const checks: Check[] = [
   siteReachable, https, httpRedirect, redirectChain, indexable, robotsPresent,
@@ -30,4 +35,5 @@ export const checks: Check[] = [
   htmlLang, viewport, imgAlt, openGraph, favicon,
   wordCount, copyrightYear, headingOrder,
   contactMethod, clickToCall, cta, analytics,
+  aiCrawlers, noJsContent, structuredData, machineReadableContact, llmsTxt,
 ];
