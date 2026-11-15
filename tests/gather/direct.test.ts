@@ -1,0 +1,232 @@
+import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  checkHttpRedirect,
+  fetchFavicon,
+  fetchHomepage,
+  fetchLlmsTxt,
+} from '@/lib/gather/direct';
+import type { SafeFetchResult } from '@/lib/security/safe-fetch';
+
+const fixture = (name: string) => readFileSync(join(__dirname, '..', 'fixtures', name), 'utf8');
+
+const ok = (
+  body: string,
+  over: { status?: number; contentType?: string | null; finalUrl?: string; redirectChain?: string[] } = {},
+): SafeFetchResult => ({
+  ok: true,
+  status: over.status ?? 200,
+  finalUrl: over.finalUrl ?? 'https://example.com/',
+  redirectChain: over.redirectChain ?? [],
+  headers: over.contentType === null ? {} : { 'content-type': over.contentType ?? 'text/html; charset=utf-8' },
+  body,
+  truncated: false,
+});
+
+const failure = (reason: Extract<SafeFetchResult, { ok: false }>['reason']): SafeFetchResult => ({
+  ok: false,
+  reason,
+  message: 'connect ECONNREFUSED 10.0.0.5:443',
+});
+
+const fetcherOf = (...results: SafeFetchResult[]) => {
+  const fn = vi.fn();
+  results.forEach((r) => fn.mockResolvedValueOnce(r));
+  fn.mockResolvedValue(results[results.length - 1]);
+  return fn;
+};
+
+describe('fetchHomepage', () => {
+  it('returns raw html, headers, and redirect chain for a normal page', async () => {
+    const f = fetcherOf(ok('<html><body>Hi</body></html>', { redirectChain: ['http://example.com/'] }));
+    const r = await fetchHomepage('http://example.com/', f);
+    expect(r.status).toBe(200);
+    expect(r.blocked).toBe(false);
+    expect(r.rawHtml).toBe('<html><body>Hi</body></html>');
+    expect(r.contentType).toBe('text/html; charset=utf-8');
+    expect(r.redirectChain).toEqual(['http://example.com/']);
+    expect(r.finalUrl).toBe('https://example.com/');
+    expect(f).toHaveBeenCalledWith('http://example.com/', { timeoutMs: 10_000, maxBytes: 5 * 1024 * 1024 });
+  });
+
+  it.each([401, 403, 429])('marks %i as blocked with reason "This site blocked our automated check"', async (status) => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(ok('denied', { status })));
+    expect(r.blocked).toBe(true);
+    expect(r.blockReason).toBe('This site blocked our automated check');
+    expect(r.status).toBe(status);
+    expect(r.rawHtml).toBeNull();
+  });
+
+  it('detects a Cloudflare-style challenge page as blocked', async () => {
+    const f = fetcherOf(ok(fixture('cloudflare-challenge.html'), { status: 503 }));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(r.blocked).toBe(true);
+    expect(r.blockReason).toBe('This site blocked our automated check');
+    expect(r.unreachableReason).toBeUndefined();
+    expect(r.rawHtml).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks DNS failure as unreachable', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('dns')));
+    expect(r.unreachableReason).toBe('The website could not be reached');
+    expect(r.blocked).toBe(false);
+    expect(r.status).toBeNull();
+    expect(r.rawHtml).toBeNull();
+  });
+
+  it('marks a network failure as unreachable without leaking the raw message', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('network')));
+    expect(r.unreachableReason).toBe('The website could not be reached');
+    expect(JSON.stringify(r)).not.toContain('10.0.0.5');
+  });
+
+  it('marks a timeout as blocked, not unreachable', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('timeout')));
+    expect(r.blocked).toBe(true);
+    expect(r.blockReason).toBe('The website did not respond in time');
+    expect(r.unreachableReason).toBeUndefined();
+  });
+
+  it('marks a blocked address as unreachable with a fixed reason', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('blocked_address')));
+    expect(r.unreachableReason).toBe('The website address is not allowed');
+    expect(JSON.stringify(r)).not.toContain('10.0.0.5');
+  });
+
+  it('retries a 5xx once, then reports unreachable', async () => {
+    const f = fetcherOf(ok('oops', { status: 502 }), ok('oops again', { status: 502 }));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(r.unreachableReason).toBe('The website returned a server error');
+    expect(r.status).toBe(502);
+    expect(r.rawHtml).toBeNull();
+  });
+
+  it('uses the retry result when the second request succeeds', async () => {
+    const f = fetcherOf(ok('oops', { status: 500 }), ok('<p>fine</p>'));
+    const r = await fetchHomepage('https://example.com/', f);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(r.status).toBe(200);
+    expect(r.rawHtml).toBe('<p>fine</p>');
+  });
+
+  it.each([404, 410])('reports %i as homepage not found', async (status) => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(ok('gone', { status })));
+    expect(r.status).toBe(status);
+    expect(r.unreachableReason).toBe('The homepage was not found');
+    expect(r.rawHtml).toBeNull();
+  });
+
+  it('returns contentType and leaves rawHtml null for non-HTML responses', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(ok('%PDF-1.7 text', { contentType: 'application/pdf' })));
+    expect(r.contentType).toBe('application/pdf');
+    expect(r.rawHtml).toBeNull();
+    expect(r.blockReason).toBe('The homepage is not an HTML page');
+    expect(r.blocked).toBe(false);
+  });
+
+  it('accepts application/xhtml+xml as HTML', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(ok('<html/>', { contentType: 'application/xhtml+xml' })));
+    expect(r.rawHtml).toBe('<html/>');
+  });
+
+  it('treats a body with NUL bytes as unreadable', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(ok('<html>\u0000\u0001\u0002</html>')));
+    expect(r.rawHtml).toBeNull();
+    expect(r.blockReason).toBe('The page content could not be read');
+    expect(r.blocked).toBe(false);
+  });
+
+  it('flags >5 MB pages as unable (reason "Page too large to analyse")', async () => {
+    const r = await fetchHomepage('https://example.com/', fetcherOf(failure('too_large')));
+    expect(r.blockReason).toBe('Page too large to analyse');
+    expect(r.blocked).toBe(false);
+    expect(r.unreachableReason).toBeUndefined();
+    expect(r.rawHtml).toBeNull();
+  });
+});
+
+describe('checkHttpRedirect', () => {
+  it('returns true when http ends on https', async () => {
+    const f = fetcherOf(ok('', { finalUrl: 'https://example.com/' }));
+    expect(await checkHttpRedirect('https://example.com/', f)).toBe(true);
+    expect(f).toHaveBeenCalledWith('http://example.com/', expect.objectContaining({ maxRedirects: 5 }));
+  });
+
+  it('returns false when http stays on http', async () => {
+    expect(await checkHttpRedirect('https://example.com/', fetcherOf(ok('', { finalUrl: 'http://example.com/' })))).toBe(false);
+  });
+
+  it('returns null on error', async () => {
+    expect(await checkHttpRedirect('https://example.com/', fetcherOf(failure('network')))).toBeNull();
+  });
+
+  it('returns null and makes no request when the final URL is not https', async () => {
+    const f = fetcherOf(ok(''));
+    expect(await checkHttpRedirect('http://example.com/', f)).toBeNull();
+    expect(f).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchFavicon', () => {
+  const html = '<head><link rel="shortcut icon" href="/f.png"></head>';
+
+  it('detects a link tag and reads the /favicon.ico status', async () => {
+    const f = fetcherOf(ok('', { status: 200, contentType: 'image/x-icon' }));
+    expect(await fetchFavicon('https://example.com', html, f)).toEqual({ linkTag: true, icoStatus: 200 });
+    expect(f).toHaveBeenCalledWith('https://example.com/favicon.ico', expect.objectContaining({ method: 'HEAD' }));
+  });
+
+  it('reports no link tag and a 404 ico', async () => {
+    const f = fetcherOf(ok('', { status: 404 }));
+    expect(await fetchFavicon('https://example.com', '<head></head>', f)).toEqual({ linkTag: false, icoStatus: 404 });
+  });
+
+  it('does not treat apple-touch-icon alone as an icon link', async () => {
+    const f = fetcherOf(ok('', { status: 404 }));
+    const r = await fetchFavicon('https://example.com', '<link rel="apple-touch-icon" href="/a.png">', f);
+    expect(r.linkTag).toBe(false);
+  });
+
+  it('falls back to GET when HEAD is not allowed', async () => {
+    const f = fetcherOf(ok('', { status: 405 }), ok('', { status: 200 }));
+    expect((await fetchFavicon('https://example.com', html, f)).icoStatus).toBe(200);
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns icoStatus null on error', async () => {
+    expect((await fetchFavicon('https://example.com', html, fetcherOf(failure('timeout')))).icoStatus).toBeNull();
+  });
+
+  it('reports no link tag when there is no html', async () => {
+    expect((await fetchFavicon('https://example.com', null, fetcherOf(ok('', { status: 404 })))).linkTag).toBe(false);
+  });
+});
+
+describe('fetchLlmsTxt', () => {
+  it('is present for 200 text/plain', async () => {
+    expect(await fetchLlmsTxt('https://example.com', fetcherOf(ok('# Site', { contentType: 'text/plain' })))).toEqual({ present: true });
+  });
+
+  it('is present for 200 text/markdown', async () => {
+    expect(await fetchLlmsTxt('https://example.com', fetcherOf(ok('# Site', { contentType: 'text/markdown; charset=utf-8' })))).toEqual({ present: true });
+  });
+
+  it('is absent for 404', async () => {
+    expect(await fetchLlmsTxt('https://example.com', fetcherOf(ok('nope', { status: 404 })))).toEqual({ present: false });
+  });
+
+  it('is absent when a 200 answer is an HTML page', async () => {
+    expect(await fetchLlmsTxt('https://example.com', fetcherOf(ok('<html></html>')))).toEqual({ present: false });
+  });
+
+  it('is null on error', async () => {
+    expect(await fetchLlmsTxt('https://example.com', fetcherOf(failure('network')))).toEqual({ present: null });
+  });
+
+  it('is null on a server error', async () => {
+    expect(await fetchLlmsTxt('https://example.com', fetcherOf(ok('x', { status: 500 })))).toEqual({ present: null });
+  });
+});

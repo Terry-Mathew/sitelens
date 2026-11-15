@@ -1,0 +1,13 @@
+# Example robots file
+User-agent: *
+Disallow: /admin/
+Disallow: /private
+Allow: /admin/public/
+Disallow:
+
+User-agent: GPTBot
+User-agent: CCBot
+Disallow: /
+
+Sitemap: https://example.com/sitemap.xml
+Sitemap: https://example.com/news-sitemap.xml # trailing comment
