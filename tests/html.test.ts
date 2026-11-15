@@ -41,6 +41,22 @@ describe('looksLikeJsShell', () => {
     expect(looksLikeJsShell(`<body><div id="root"><p>${words(80)}</p></div><script src="a.js"></script></body>`)).toBe(false);
   });
 
+  it('false for a short static page with an analytics script', () => {
+    expect(looksLikeJsShell('<body><p>Short page</p><script src="https://example.com/analytics.js"></script></body>')).toBe(false);
+  });
+
+  it('false for a long page that has an empty #root', () => {
+    expect(looksLikeJsShell(`<body><p>${words(80)}</p><div id="root"></div></body>`)).toBe(false);
+  });
+
+  it('true for other framework root containers', () => {
+    expect(looksLikeJsShell('<body><div id="___gatsby"></div></body>')).toBe(true);
+    expect(looksLikeJsShell('<body><div id="svelte"></div></body>')).toBe(true);
+    expect(looksLikeJsShell('<body><div data-reactroot></div></body>')).toBe(true);
+    expect(looksLikeJsShell('<body><div ng-version="17.0.0"></div></body>')).toBe(true);
+    expect(looksLikeJsShell('<body><app-root></app-root></body>')).toBe(true);
+  });
+
   it('false for a short static page with no scripts and no empty root', () => {
     expect(looksLikeJsShell('<body><p>Short page</p></body>')).toBe(false);
   });

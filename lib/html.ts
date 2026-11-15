@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
 
 const NON_VISIBLE = 'script, style, noscript, template';
-const SHELL_ROOTS = '#root, #__next, #app';
+const SHELL_ROOTS = '#root, #__next, #app, #___gatsby, #svelte, [data-reactroot], [ng-version], app-root';
 const SHELL_WORD_LIMIT = 50;
 
 export function loadHtml(html: string): CheerioAPI {
@@ -22,12 +22,14 @@ export function wordCount(text: string): number {
   return trimmed === '' ? 0 : trimmed.split(/\s+/).length;
 }
 
-/** Heuristic: the raw HTML has almost no text and looks like a client-side app shell. */
+/** Heuristic: the raw HTML has almost no text and has an empty app-root container. Script tags alone do not count. */
 export function looksLikeJsShell(rawHtml: string): boolean {
   const $ = loadHtml(rawHtml);
   if (wordCount(visibleText($)) >= SHELL_WORD_LIMIT) return false;
-  const roots = $('body').find(SHELL_ROOTS);
-  const hasEmptyRoot =
-    roots.length === 1 && roots.children().length === 0 && roots.text().trim() === '';
-  return hasEmptyRoot || $('script').length > 0;
+  const copy = cheerio.load($.html());
+  copy(NON_VISIBLE).remove();
+  return copy('body')
+    .find(SHELL_ROOTS)
+    .toArray()
+    .some((el) => copy(el).text().trim() === '');
 }
