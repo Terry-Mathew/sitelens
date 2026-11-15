@@ -19,8 +19,10 @@ export const check: Check = {
     // Fallback mode: no rendered copy exists. The scan only knows if the page needs JavaScript.
     if (!page.rendered) {
       const evidence = { rawWords };
-      if (!page.jsRendered) return pass(evidence, 'raw');
-      return { status: 'fail', severity: 'warning', evidence, source: 'raw' };
+      if (page.jsRendered) return { status: 'fail', severity: 'warning', evidence, source: 'raw' };
+      // Enough raw text proves that the page is readable without JavaScript. Less text proves nothing.
+      if (rawWords >= RAW_WORD_LIMIT) return pass(evidence, 'raw');
+      return unable('The page could not be loaded in a browser to compare', 'raw');
     }
 
     const renderedWords = words(page.rendered.html);

@@ -38,10 +38,20 @@ describe('no-js-content', () => {
     expect(r.evidence).not.toHaveProperty('renderedWords');
   });
 
-  it('fallback without jsRendered → pass with rawWords', () => {
-    const r = check.run(makePage({ rendered: null, loadedWith: 'direct-fallback', jsRendered: false }));
-    expect(r.status).toBe('pass');
-    expect(r.evidence).toHaveProperty('rawWords');
+  const fallback = (raw: number) =>
+    makePage({
+      homepage: { rawHtml: htmlPage('<title>x</title>', body(raw)) },
+      rendered: null, loadedWith: 'direct-fallback', jsRendered: false,
+    });
+
+  it('fallback, not a JavaScript app, 1 raw word → unable_to_check (no proof either way)', () => {
+    expect(check.run(fallback(1))).toMatchObject({
+      status: 'unable_to_check', unableReason: 'The page could not be loaded in a browser to compare',
+    });
+  });
+
+  it('fallback, not a JavaScript app, 200 raw words → pass with rawWords', () => {
+    expect(check.run(fallback(200))).toMatchObject({ status: 'pass', evidence: { rawWords: 200 }, source: 'raw' });
   });
 
   it('raw HTML missing → unable_to_check', () => {
