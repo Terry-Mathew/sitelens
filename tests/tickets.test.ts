@@ -106,6 +106,34 @@ describe("performance tickets (Upstash)", () => {
     expect((await redeemPerformanceTicket("a.b.c", URL_A, NOW)).ok).toBe(false);
   });
 
+  it("verifies a fresh ticket without using it", async () => {
+    const { issuePerformanceTicket, verifyPerformanceTicket, redeemPerformanceTicket } = await load();
+    const ticket = await issuePerformanceTicket("scan-v1", URL_A, NOW);
+    expect(await verifyPerformanceTicket(ticket, URL_A, NOW + 1000)).toEqual({ ok: true });
+    expect(await verifyPerformanceTicket(ticket, URL_A, NOW + 2000)).toEqual({ ok: true });
+    expect(setCalls).toHaveLength(0);
+    // The ticket is still unused, so the redeem works once.
+    expect(await redeemPerformanceTicket(ticket, URL_A, NOW + 3000)).toEqual({ ok: true });
+  });
+
+  it("verify rejects an expired, mismatched, tampered or malformed ticket without a Redis call", async () => {
+    const { issuePerformanceTicket, verifyPerformanceTicket } = await load();
+    const ticket = await issuePerformanceTicket("scan-v2", URL_A, NOW);
+    expect(await verifyPerformanceTicket(ticket, URL_A, NOW + 600_001)).toEqual({
+      ok: false,
+      error: "This performance ticket has expired.",
+    });
+    expect(await verifyPerformanceTicket(ticket, "https://other.com/", NOW)).toEqual({
+      ok: false,
+      error: "This performance ticket is for a different website.",
+    });
+    const [payload] = ticket.split(".");
+    const badSig = Buffer.from("not-the-signature").toString("base64url");
+    expect((await verifyPerformanceTicket(`${payload}.${badSig}`, URL_A, NOW)).ok).toBe(false);
+    expect((await verifyPerformanceTicket("garbage", URL_A, NOW)).ok).toBe(false);
+    expect(setCalls).toHaveLength(0);
+  });
+
   it("rejects a ticket signed with a different secret", async () => {
     const { issuePerformanceTicket } = await load();
     const ticket = await issuePerformanceTicket("scan-7", URL_A, NOW);

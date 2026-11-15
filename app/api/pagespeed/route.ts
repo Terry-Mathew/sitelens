@@ -2,7 +2,7 @@ import { getPerformanceProvider } from '@/lib/performance';
 import { checkPageSpeedLimit, getClientIp, type LimitResult } from '@/lib/ratelimit';
 import { requireSession } from '@/lib/security/session';
 import { normaliseAndValidateUrl } from '@/lib/security/url';
-import { redeemPerformanceTicket } from '@/lib/tickets';
+import { redeemPerformanceTicket, verifyPerformanceTicket } from '@/lib/tickets';
 
 export const runtime = 'nodejs';
 export const maxDuration = 90;
@@ -38,19 +38,24 @@ export async function POST(req: Request): Promise<Response> {
   const body = await readBody(req);
   if (body === null) return Response.json({ error: BAD_URL }, { status: 400 });
 
-  let limit: LimitResult;
-  try {
-    limit = await checkPageSpeedLimit(getClientIp(req));
-  } catch {
-    return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
-  }
-  if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
-
   try {
     const checked = await normaliseAndValidateUrl(body.url);
     if (!checked.ok) return Response.json({ error: checked.error }, { status: 400 });
 
-    // The ticket belongs to the validated URL that /api/scan issued it for.
+    // Check the ticket first. A bad, expired or mismatched ticket must not use a limiter slot.
+    // This check is stateless. It does not use the ticket.
+    const verified = await verifyPerformanceTicket(body.ticket, checked.url);
+    if (!verified.ok) return Response.json({ error: verified.error }, { status: 403 });
+
+    let limit: LimitResult;
+    try {
+      limit = await checkPageSpeedLimit(getClientIp(req));
+    } catch {
+      return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
+    }
+    if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
+
+    // The ticket belongs to the validated URL that /api/scan issued it for. SET NX uses it once.
     const redeemed = await redeemPerformanceTicket(body.ticket, checked.url);
     if (!redeemed.ok) return Response.json({ error: redeemed.error }, { status: 403 });
 

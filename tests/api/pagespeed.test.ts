@@ -4,6 +4,7 @@ const requireSession = vi.fn();
 const checkPageSpeedLimit = vi.fn();
 const normaliseAndValidateUrl = vi.fn();
 const redeemPerformanceTicket = vi.fn();
+const verifyPerformanceTicket = vi.fn();
 const providerFetch = vi.fn();
 
 vi.mock('@/lib/security/session', () => ({
@@ -18,6 +19,7 @@ vi.mock('@/lib/security/url', () => ({
 }));
 vi.mock('@/lib/tickets', () => ({
   redeemPerformanceTicket: (ticket: string, url: string) => redeemPerformanceTicket(ticket, url),
+  verifyPerformanceTicket: (ticket: string, url: string) => verifyPerformanceTicket(ticket, url),
 }));
 vi.mock('@/lib/performance', () => ({
   getPerformanceProvider: () => ({ id: 'test', fetch: (url: string) => providerFetch(url) }),
@@ -41,6 +43,7 @@ beforeEach(() => {
   checkPageSpeedLimit.mockReset().mockResolvedValue({ ok: true });
   normaliseAndValidateUrl.mockReset().mockResolvedValue({ ok: true, url: 'https://example.com/' });
   redeemPerformanceTicket.mockReset().mockResolvedValue({ ok: true });
+  verifyPerformanceTicket.mockReset().mockResolvedValue({ ok: true });
   providerFetch.mockReset().mockResolvedValue({ ok: false, unavailable: 'Google PageSpeed could not test this page.' });
 });
 
@@ -105,6 +108,37 @@ describe('POST /api/pagespeed', () => {
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: 'This performance ticket is not valid.' });
     expect(providerFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['invalid', 'This performance ticket is not valid.'],
+    ['expired', 'This performance ticket has expired.'],
+    ['mismatched', 'This performance ticket is for a different website.'],
+  ])('returns 403 for an %s ticket without using a limiter slot', async (_n, error) => {
+    verifyPerformanceTicket.mockResolvedValue({ ok: false, error });
+    const res = await POST(call({ url: 'example.com', ticket: 't' }));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error });
+    expect(checkPageSpeedLimit).not.toHaveBeenCalled();
+    expect(redeemPerformanceTicket).not.toHaveBeenCalled();
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
+  it('verifies the ticket, then checks the limit, then uses the ticket', async () => {
+    const order: string[] = [];
+    verifyPerformanceTicket.mockImplementation(async () => (order.push('verify'), { ok: true }));
+    checkPageSpeedLimit.mockImplementation(async () => (order.push('limit'), { ok: true }));
+    redeemPerformanceTicket.mockImplementation(async () => (order.push('redeem'), { ok: true }));
+    await POST(call({ url: ' Example.com/x ', ticket: 'ticket-1' }));
+    expect(order).toEqual(['verify', 'limit', 'redeem']);
+    expect(verifyPerformanceTicket).toHaveBeenCalledWith('ticket-1', 'https://example.com/');
+  });
+
+  it('does not use the ticket when the limit is hit', async () => {
+    checkPageSpeedLimit.mockResolvedValue({ ok: false, message: 'Too many checks.' });
+    const res = await POST(call({ url: 'example.com', ticket: 't' }));
+    expect(res.status).toBe(429);
+    expect(redeemPerformanceTicket).not.toHaveBeenCalled();
   });
 
   it('redeems the ticket against the validated URL, not the raw input', async () => {

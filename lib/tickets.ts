@@ -62,12 +62,15 @@ function parsePayload(bytes: Uint8Array): Payload | null {
   return null;
 }
 
-export async function redeemPerformanceTicket(
+type VerifyResult = { ok: true } | { ok: false; error: string };
+
+/** Checks the signature, the expiry and the URL. Returns the payload. It does not use the ticket. */
+async function checkTicket(
   ticket: string,
   url: string,
-  nowMs: number = Date.now(),
-): Promise<RedeemResult> {
-  const invalid: RedeemResult = { ok: false, error: MESSAGE_INVALID };
+  nowMs: number,
+): Promise<{ ok: true; payload: Payload } | { ok: false; error: string }> {
+  const invalid = { ok: false as const, error: MESSAGE_INVALID };
   const parts = ticket.split(".");
   if (parts.length !== 2 || !parts[0] || !parts[1]) return invalid;
 
@@ -81,6 +84,30 @@ export async function redeemPerformanceTicket(
   if (!payload) return invalid;
   if (nowMs > payload.exp) return { ok: false, error: MESSAGE_EXPIRED };
   if (payload.url !== url) return { ok: false, error: MESSAGE_WRONG_URL };
+  return { ok: true, payload };
+}
+
+/**
+ * Checks a ticket without using it. It makes no network call.
+ * Call it before the rate limiter, so that a dead ticket does not use a limiter slot.
+ */
+export async function verifyPerformanceTicket(
+  ticket: string,
+  url: string,
+  nowMs: number = Date.now(),
+): Promise<VerifyResult> {
+  const checked = await checkTicket(ticket, url, nowMs);
+  return checked.ok ? { ok: true } : checked;
+}
+
+export async function redeemPerformanceTicket(
+  ticket: string,
+  url: string,
+  nowMs: number = Date.now(),
+): Promise<RedeemResult> {
+  const checked = await checkTicket(ticket, url, nowMs);
+  if (!checked.ok) return checked;
+  const { payload } = checked;
 
   const backend = getBackend();
   if (backend.kind === "unconfigured") return { ok: false, error: MESSAGE_UNCONFIGURED };
