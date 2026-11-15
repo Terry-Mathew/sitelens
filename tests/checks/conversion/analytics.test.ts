@@ -49,4 +49,34 @@ describe('analytics', () => {
   it('unable_to_check when the homepage could not be read', () => {
     expect(check.run(blockedPage()).status).toBe('unable_to_check');
   });
+
+  it.each([
+    ['Microsoft Clarity', '<script>(function(c,l,a,r,i,t,y){t.src="https://www.clarity.ms/tag/"+i})()</script>'],
+    ['Hotjar', '<script>h._hjSettings={hjid:1};r.src="https://static.hotjar.com/c/hotjar-1.js"</script>'],
+    ['HubSpot', '<script src="//js.hs-scripts.com/123.js"></script>'],
+    ['Cloudflare Web Analytics', '<script defer src="https://static.cloudflareinsights.com/beacon.min.js"></script>'],
+    ['Segment', '<script>t.src="https://cdn.segment.com/analytics.js/v1/"+key</script>'],
+  ])('detects %s', (name, head) => {
+    expect(check.run(withHead(head))).toMatchObject({ status: 'pass', evidence: { tools: [name] } });
+  });
+
+  it.each([
+    ['Squarespace', '<link rel="stylesheet" href="https://static1.squarespace.com/static/x/site.css">'],
+    ['Wix', '<meta name="generator" content="Wix.com Website Builder">'],
+    ['Wix', '<script src="https://static.parastorage.com/services/x.js"></script>'],
+    ['Shopify', '<script src="https://cdn.shopify.com/s/files/1/theme.js"></script>'],
+    ['Shopify', '<meta name="generator" content="Shopify">'],
+  ])('a %s site with no listed tool → unable_to_check with the platform reason', (platform, head) => {
+    const r = check.run(withHead(head));
+    expect(r).toMatchObject({
+      status: 'unable_to_check',
+      unableReason: `This site uses ${platform}, which includes built-in visitor statistics.`,
+    });
+    expect(r.evidence).not.toHaveProperty('tools', [platform]);
+  });
+
+  it('a website-builder site with a listed tool → pass, and the platform is not a tool', () => {
+    const head = '<link href="https://static1.squarespace.com/a.css" rel="stylesheet"><script src="https://plausible.io/js/a.js"></script>';
+    expect(check.run(withHead(head))).toMatchObject({ status: 'pass', evidence: { tools: ['Plausible'] } });
+  });
 });
