@@ -12,10 +12,16 @@ const GZIP_TYPES = ['application/gzip', 'application/x-gzip'];
 
 type Probe = { state: 'valid' | 'invalid' | 'error' | 'missing'; isIndex: boolean };
 
+/** The hostname without a leading "www.", so apex and www forms compare as equal. */
+const siteHost = (hostname: string) => hostname.toLowerCase().replace(/^www\./, '');
+
 function isSameHost(candidate: string, origin: string): boolean {
   try {
     const url = new URL(candidate);
-    return (url.protocol === 'https:' || url.protocol === 'http:') && url.hostname === new URL(origin).hostname;
+    return (
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
+      siteHost(url.hostname) === siteHost(new URL(origin).hostname)
+    );
   } catch {
     return false;
   }
@@ -30,7 +36,14 @@ async function probe(url: string, fetcher: Fetcher): Promise<Probe> {
   if (new URL(url).pathname.endsWith('.gz')) {
     // The body is not decompressed here, so a gzip sitemap is not parsed.
     const type = (result.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
-    return { state: GZIP_TYPES.includes(type) ? 'valid' : 'invalid', isIndex: false };
+    // Many servers send a gzip file as application/octet-stream. Without parsing, the file is not proof of a fault.
+    return { state: GZIP_TYPES.includes(type) ? 'valid' : 'error', isIndex: false };
+  }
+
+  // Google also accepts a text sitemap: one http(s) URL on each line.
+  const lines = result.body.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length > 0 && lines.every((line) => /^https?:\/\/\S+$/i.test(line))) {
+    return { state: 'valid', isIndex: false };
   }
 
   const $ = cheerio.load(result.body, { xmlMode: true });
@@ -55,5 +68,6 @@ export async function fetchSitemap(
     if (outcome.state === 'invalid') invalid ??= { state: 'invalid', url, isIndex: false };
     if (outcome.state === 'error') errored ??= { state: 'error', url, isIndex: false };
   }
-  return invalid ?? errored ?? { state: 'missing', url: null, isIndex: false };
+  // A candidate that could not be read can still be the real sitemap. Then an invalid one is not proof.
+  return errored ?? invalid ?? { state: 'missing', url: null, isIndex: false };
 }

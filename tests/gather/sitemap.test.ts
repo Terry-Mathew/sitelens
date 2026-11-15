@@ -97,9 +97,44 @@ describe('fetchSitemap', () => {
     expect(r).toEqual({ state: 'valid', url: 'https://example.com/sitemap.xml.gz', isIndex: false });
   });
 
-  it('marks a .gz sitemap as invalid when the content type is not gzip', async () => {
-    const f = routes({ 'https://example.com/sitemap.xml.gz': ok('<html></html>', 200, 'text/html') });
-    const r = await fetchSitemap('https://example.com', ['https://example.com/sitemap.xml.gz'], f);
-    expect(r.state).toBe('invalid');
+  it.each(['application/octet-stream', 'text/html'])(
+    'returns error (not invalid) for a .gz sitemap with the content type %s',
+    async (type) => {
+      const f = routes({ 'https://example.com/sitemap.xml.gz': ok('\u001f\u008b binary', 200, type) });
+      const r = await fetchSitemap('https://example.com', ['https://example.com/sitemap.xml.gz'], f);
+      expect(r.state).toBe('error');
+    },
+  );
+
+  it('returns error when robots lists a non-XML file and /sitemap.xml is blocked', async () => {
+    const f = routes({
+      'https://www.g2.com/llms.txt': ok('# G2', 200, 'text/plain'),
+      'https://www.g2.com/sitemap.xml': ok('denied', 403, 'text/html'),
+    });
+    const r = await fetchSitemap('https://www.g2.com', ['https://www.g2.com/llms.txt'], f);
+    expect(r.state).toBe('error');
+  });
+
+  it('returns invalid when robots lists a non-XML file and /sitemap.xml is 404', async () => {
+    const f = routes({ 'https://www.g2.com/llms.txt': ok('# G2', 200, 'text/plain') });
+    const r = await fetchSitemap('https://www.g2.com', ['https://www.g2.com/llms.txt'], f);
+    expect(r).toEqual({ state: 'invalid', url: 'https://www.g2.com/llms.txt', isIndex: false });
+  });
+
+  it('accepts a plain-text sitemap with one URL on each line', async () => {
+    const body = 'https://example.com/\nhttps://example.com/about\n\nhttp://example.com/contact\n';
+    const f = routes({ 'https://example.com/sitemap.xml': ok(body, 200, 'text/plain') });
+    expect(await fetchSitemap('https://example.com', [], f)).toMatchObject({ state: 'valid', isIndex: false });
+  });
+
+  it('does not accept a text body that has a line that is not a URL', async () => {
+    const f = routes({ 'https://example.com/sitemap.xml': ok('https://example.com/\nhello', 200, 'text/plain') });
+    expect((await fetchSitemap('https://example.com', [], f)).state).toBe('invalid');
+  });
+
+  it('probes a robots sitemap on the apex host when the final host is www', async () => {
+    const f = routes({ 'https://example.com/s.xml': ok(fixture('sitemap-urlset.xml')) });
+    const r = await fetchSitemap('https://www.example.com', ['https://example.com/s.xml'], f);
+    expect(r).toEqual({ state: 'valid', url: 'https://example.com/s.xml', isIndex: false });
   });
 });
