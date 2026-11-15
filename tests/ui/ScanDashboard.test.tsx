@@ -7,6 +7,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
+// jsdom has no PDF viewer. tests/ui/ReportPanel.test.tsx covers the report panel.
+vi.mock('@/components/report/ReportPreview', () => ({ default: () => null }));
+
 import { ScanDashboard } from '@/components/dashboard/ScanDashboard';
 import { LIMITATION_TEXT } from '@/lib/content/limitations';
 import { defaultDraft } from '@/lib/report/draft';

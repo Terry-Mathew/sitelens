@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FindingGroups } from '@/components/dashboard/FindingGroups';
 import { JsBanner } from '@/components/dashboard/JsBanner';
 import { PerformancePanel } from '@/components/dashboard/PerformancePanel';
+import { ReportPanel } from '@/components/dashboard/ReportPanel';
 import { ScopeLimitations } from '@/components/dashboard/ScopeLimitations';
 import { StatusLists } from '@/components/dashboard/StatusLists';
 import { SummaryStrip } from '@/components/dashboard/SummaryStrip';
@@ -269,12 +270,9 @@ function LoadedDashboard({ id }: { id: string }) {
           <StatusLists findings={findings} includedIds={draft.includedCheckIds} onToggle={onToggle} />
           <ScopeLimitations scan={scan} performanceLimitations={performanceLimitations} />
         </div>
-        {/* Task 15 replaces this slot with the report panel and the live PDF preview. */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
-          <section aria-label="Client report" className="rounded-lg border border-dashed bg-card p-4 sm:p-5">
-            <h2 className="text-base font-semibold text-foreground">Client report</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Report preview comes in the next step.</p>
-          </section>
+        {/* On wide screens the panel stays in view, so the preview shows each include choice. */}
+        <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:self-start lg:overflow-y-auto lg:rounded-lg">
+          <ReportPanel scan={scan} pagespeed={pagespeed} draft={draft} onDraftChange={saveDraft} />
         </aside>
       </div>
     </div>
