@@ -39,6 +39,24 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-critical-bg: var(--sev-critical-bg);
+  --color-sev-critical-border: var(--sev-critical-border);
+  --color-sev-warning: var(--sev-warning);
+  --color-sev-warning-bg: var(--sev-warning-bg);
+  --color-sev-warning-border: var(--sev-warning-border);
+  --color-sev-opportunity: var(--sev-opportunity);
+  --color-sev-opportunity-bg: var(--sev-opportunity-bg);
+  --color-sev-opportunity-border: var(--sev-opportunity-border);
+  --color-sev-passed: var(--sev-passed);
+  --color-sev-passed-bg: var(--sev-passed-bg);
+  --color-sev-passed-border: var(--sev-passed-border);
+  --color-sev-observation: var(--sev-observation);
+  --color-sev-observation-bg: var(--sev-observation-bg);
+  --color-sev-observation-border: var(--sev-observation-border);
+  --color-sev-unable: var(--sev-unable);
+  --color-sev-unable-bg: var(--sev-unable-bg);
+  --color-sev-unable-border: var(--sev-unable-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,24 +67,24 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.982 0.003 250);
+  --foreground: oklch(0.2 0.012 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.4 0.07 225);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.48 0.014 250);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.55 0.09 225);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -81,6 +99,25 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Severity colours. Each text colour has a contrast of at least 4.5:1 on its background. */
+  --sev-critical: oklch(0.5 0.19 27);
+  --sev-critical-bg: oklch(0.97 0.018 27);
+  --sev-critical-border: oklch(0.86 0.07 27);
+  --sev-warning: oklch(0.5 0.12 55);
+  --sev-warning-bg: oklch(0.977 0.03 85);
+  --sev-warning-border: oklch(0.86 0.09 75);
+  --sev-opportunity: oklch(0.5 0.15 255);
+  --sev-opportunity-bg: oklch(0.97 0.018 250);
+  --sev-opportunity-border: oklch(0.86 0.05 250);
+  --sev-passed: oklch(0.48 0.1 155);
+  --sev-passed-bg: oklch(0.97 0.025 155);
+  --sev-passed-border: oklch(0.86 0.06 155);
+  --sev-observation: oklch(0.45 0.025 255);
+  --sev-observation-bg: oklch(0.965 0.005 255);
+  --sev-observation-border: oklch(0.87 0.01 255);
+  --sev-unable: oklch(0.47 0.09 300);
+  --sev-unable-bg: oklch(0.97 0.012 300);
+  --sev-unable-border: oklch(0.85 0.04 300);
 }
 
 .dark {
@@ -115,6 +152,24 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --sev-critical: oklch(0.78 0.12 27);
+  --sev-critical-bg: oklch(0.26 0.05 27);
+  --sev-critical-border: oklch(0.4 0.08 27);
+  --sev-warning: oklch(0.82 0.11 75);
+  --sev-warning-bg: oklch(0.27 0.04 70);
+  --sev-warning-border: oklch(0.42 0.07 70);
+  --sev-opportunity: oklch(0.8 0.09 250);
+  --sev-opportunity-bg: oklch(0.26 0.04 255);
+  --sev-opportunity-border: oklch(0.4 0.07 255);
+  --sev-passed: oklch(0.8 0.1 155);
+  --sev-passed-bg: oklch(0.26 0.04 155);
+  --sev-passed-border: oklch(0.4 0.06 155);
+  --sev-observation: oklch(0.82 0.015 255);
+  --sev-observation-bg: oklch(0.27 0.01 255);
+  --sev-observation-border: oklch(0.4 0.015 255);
+  --sev-unable: oklch(0.8 0.07 300);
+  --sev-unable-bg: oklch(0.27 0.03 300);
+  --sev-unable-border: oklch(0.42 0.05 300);
 }
 
 @layer base {
