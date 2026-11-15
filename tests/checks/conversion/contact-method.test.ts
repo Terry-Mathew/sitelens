@@ -15,7 +15,7 @@ describe('contact-method', () => {
   });
 
   it('evidence lists which were found', () => {
-    expect(check.run(withBody('<a href="TEL:+441234">Call</a><form></form>'))).toMatchObject({
+    expect(check.run(withBody('<a href="TEL:+441234">Call</a><form><textarea name="msg"></textarea></form>'))).toMatchObject({
       status: 'pass', severity: 'passed', evidence: { tel: true, mailto: false, form: true },
     });
     expect(check.run(withBody('<a href="mailto:a@b.com">Mail</a>'))).toMatchObject({ evidence: { tel: false, mailto: true, form: false } });
@@ -52,10 +52,48 @@ describe('contact-method', () => {
     expect(check.run(withBody(body))).toMatchObject({ status: 'pass', evidence: { messaging: true } });
   });
 
-  it('an embedded form in an iframe passes with formEmbed', () => {
-    expect(check.run(withBody('<iframe src="https://forms.example.net/f/abc"></iframe>'))).toMatchObject({
+  it.each([
+    ['Typeform', 'https://acme.typeform.com/to/abc'],
+    ['Google Forms', 'https://docs.google.com/forms/d/e/x/viewform'],
+    ['forms.gle', 'https://forms.gle/abc'],
+    ['Jotform', 'https://form.jotform.com/12345'],
+    ['HubSpot', 'https://share.hsforms.com/abc'],
+    ['Tally', 'https://tally.so/embed/abc'],
+  ])('an embedded %s form in an iframe passes with formEmbed', (_n, src) => {
+    expect(check.run(withBody(`<iframe src="${src}"></iframe>`))).toMatchObject({
       status: 'pass', evidence: { formEmbed: true, form: false },
     });
+  });
+
+  it.each([
+    ['"platform" in the address', 'https://cdn.platform.example/x'],
+    ['"information" in the address', 'https://example.com/information'],
+    ['"form" in an unknown host', 'https://forms.example.net/f/abc'],
+  ])('an iframe with %s does not count', (_n, src) => {
+    expect(check.run(withBody(`<iframe src="${src}"></iframe>`)).status).toBe('fail');
+  });
+
+  it.each([
+    ['a site search form', '<form role="search"><input type="search" name="s"></form>'],
+    ['a search input', '<form action="/find"><input type="search" name="term"><input type="text" name="x"></form>'],
+    ['a single "q" field', '<form><input name="q"></form>'],
+    ['a search action', '<form action="/search"><input name="term"><input name="where"></form>'],
+    ['a newsletter form', '<form action="/subscribe"><input type="email" name="email"><button>Join</button></form>'],
+    ['an empty form', '<form></form>'],
+  ])('%s does not count as a contact method', (_n, body) => {
+    expect(check.run(withBody(body))).toMatchObject({ status: 'fail', evidence: { form: false } });
+  });
+
+  it.each([
+    ['name, email and message', '<form><input name="name"><input type="email" name="email"><textarea name="msg"></textarea></form>'],
+    ['a phone field', '<form><input type="tel" name="phone"></form>'],
+    ['an email and a second text field', '<form><input type="email" name="email"><input type="text" name="name"></form>'],
+  ])('a contact form with %s passes', (_n, body) => {
+    expect(check.run(withBody(body))).toMatchObject({ status: 'pass', evidence: { form: true } });
+  });
+
+  it('a search form with a textarea still does not count', () => {
+    expect(check.run(withBody('<form role="search"><textarea name="q"></textarea></form>')).status).toBe('fail');
   });
 
   it('an iframe without "form" in its address does not count', () => {
