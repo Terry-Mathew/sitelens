@@ -1,4 +1,4 @@
-import type { PageData } from '@/lib/types';
+import type { LimitationCode, PageData } from '@/lib/types';
 import { safeFetch, type SafeFetchResult } from '@/lib/security/safe-fetch';
 import { loadHtml } from '@/lib/html';
 
@@ -154,4 +154,16 @@ export async function fetchLlmsTxt(origin: string, fetcher: Fetcher = safeFetch)
   if (result.status !== 200) return { present: null };
   const mime = (result.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   return { present: mime === 'text/plain' || mime === 'text/markdown' };
+}
+
+/** Maps a homepage result to a limitation code. Returns null when the homepage was read. */
+export function homepageIssue(homepage: PageData['homepage']): Extract<
+  LimitationCode,
+  'homepage_blocked' | 'homepage_unreachable' | 'non_html' | 'too_large'
+> | null {
+  if (homepage.blockReason === REASON.tooLarge) return 'too_large';
+  if (homepage.blockReason === REASON.notHtml || homepage.blockReason === REASON.unreadable) return 'non_html';
+  if (homepage.blocked) return 'homepage_blocked';
+  if (homepage.unreachableReason) return 'homepage_unreachable';
+  return null;
 }

@@ -248,3 +248,27 @@ describe('fetchLlmsTxt', () => {
     expect(await fetchLlmsTxt('https://example.com', fetcherOf(ok('x', { status: 500 })))).toEqual({ present: null });
   });
 });
+
+describe('homepageIssue', () => {
+  const base = { status: 200, blocked: false, contentType: null, headers: {}, redirectChain: [], rawHtml: null, finalUrl: 'https://example.com/' };
+
+  it('returns null for a readable homepage', async () => {
+    const { homepageIssue } = await import('@/lib/gather/direct');
+    expect(homepageIssue({ ...base, rawHtml: '<html></html>' })).toBeNull();
+  });
+
+  it('maps each failure to a code', async () => {
+    const { homepageIssue, fetchHomepage } = await import('@/lib/gather/direct');
+    const fail = (reason: 'timeout' | 'too_large' | 'blocked_address' | 'network') =>
+      vi.fn().mockResolvedValue({ ok: false, reason, message: 'x' });
+    expect(homepageIssue(await fetchHomepage('https://example.com/', fail('too_large')))).toBe('too_large');
+    expect(homepageIssue(await fetchHomepage('https://example.com/', fail('timeout')))).toBe('homepage_blocked');
+    expect(homepageIssue(await fetchHomepage('https://example.com/', fail('network')))).toBe('homepage_unreachable');
+    const html = (status: number, type: string, body = 'x') =>
+      vi.fn().mockResolvedValue({ ok: true, status, finalUrl: 'https://example.com/', redirectChain: [], headers: { 'content-type': type }, body, truncated: false });
+    expect(homepageIssue(await fetchHomepage('https://example.com/', html(403, 'text/html')))).toBe('homepage_blocked');
+    expect(homepageIssue(await fetchHomepage('https://example.com/', html(404, 'text/html')))).toBe('homepage_unreachable');
+    expect(homepageIssue(await fetchHomepage('https://example.com/', html(200, 'application/pdf')))).toBe('non_html');
+    expect(homepageIssue(await fetchHomepage('https://example.com/', html(200, 'text/html', '\u0000bin')))).toBe('non_html');
+  });
+});
