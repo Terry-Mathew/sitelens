@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": 500,
+    "message": "Lighthouse returned error: FAILED_DOCUMENT_REQUEST.",
+    "errors": [
+      {
+        "message": "Lighthouse returned error: FAILED_DOCUMENT_REQUEST.",
+        "domain": "lighthouseError",
+        "reason": "lighthouseError"
+      }
+    ],
+    "status": "INTERNAL"
+  }
+}

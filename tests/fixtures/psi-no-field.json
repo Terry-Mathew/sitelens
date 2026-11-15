@@ -1,0 +1,66 @@
+{
+  "id": "https://example.com/",
+  "loadingExperience": {
+    "id": "https://example.com/",
+    "initial_url": "https://example.com/"
+  },
+  "originLoadingExperience": {
+    "id": "https://example.com",
+    "initial_url": "https://example.com/"
+  },
+  "lighthouseResult": {
+    "requestedUrl": "https://example.com/",
+    "finalUrl": "https://example.com/",
+    "fetchTime": "2026-11-15T10:00:00.000Z",
+    "categories": {
+      "performance": {
+        "id": "performance",
+        "score": 0.724
+      },
+      "accessibility": {
+        "id": "accessibility",
+        "score": 0.874
+      },
+      "best-practices": {
+        "id": "best-practices",
+        "score": 0.96
+      },
+      "seo": {
+        "id": "seo",
+        "score": 1
+      }
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "score": 0.62,
+        "numericValue": 3142.5,
+        "displayValue": "3.1 s"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "score": 1,
+        "numericValue": 0.0312,
+        "displayValue": "0.031"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "score": 0.9,
+        "numericValue": 187,
+        "displayValue": "190 ms"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "score": 0.8,
+        "numericValue": 1620.3,
+        "displayValue": "1.6 s"
+      },
+      "speed-index": {
+        "id": "speed-index",
+        "score": 0.7,
+        "numericValue": 3410,
+        "displayValue": "3.4 s"
+      }
+    }
+  }
+}

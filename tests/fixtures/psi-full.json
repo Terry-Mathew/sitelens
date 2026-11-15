@@ -1,0 +1,172 @@
+{
+  "id": "https://example.com/",
+  "loadingExperience": {
+    "id": "https://example.com/",
+    "metrics": {
+      "LARGEST_CONTENTFUL_PAINT_MS": {
+        "percentile": 2400,
+        "category": "AVERAGE",
+        "distributions": [
+          {
+            "min": 0,
+            "max": 1,
+            "proportion": 0.7
+          },
+          {
+            "min": 1,
+            "max": 2,
+            "proportion": 0.2
+          },
+          {
+            "proportion": 0.1,
+            "min": 2
+          }
+        ]
+      },
+      "INTERACTION_TO_NEXT_PAINT": {
+        "percentile": 180,
+        "category": "FAST",
+        "distributions": [
+          {
+            "min": 0,
+            "max": 1,
+            "proportion": 0.7
+          },
+          {
+            "min": 1,
+            "max": 2,
+            "proportion": 0.2
+          },
+          {
+            "proportion": 0.1,
+            "min": 2
+          }
+        ]
+      },
+      "CUMULATIVE_LAYOUT_SHIFT_SCORE": {
+        "percentile": 5,
+        "category": "FAST",
+        "distributions": [
+          {
+            "min": 0,
+            "max": 1,
+            "proportion": 0.7
+          },
+          {
+            "min": 1,
+            "max": 2,
+            "proportion": 0.2
+          },
+          {
+            "proportion": 0.1,
+            "min": 2
+          }
+        ]
+      },
+      "FIRST_CONTENTFUL_PAINT_MS": {
+        "percentile": 1500,
+        "category": "FAST",
+        "distributions": [
+          {
+            "min": 0,
+            "max": 1,
+            "proportion": 0.7
+          },
+          {
+            "min": 1,
+            "max": 2,
+            "proportion": 0.2
+          },
+          {
+            "proportion": 0.1,
+            "min": 2
+          }
+        ]
+      }
+    },
+    "overall_category": "AVERAGE",
+    "initial_url": "https://example.com/"
+  },
+  "originLoadingExperience": {
+    "id": "https://example.com",
+    "metrics": {
+      "LARGEST_CONTENTFUL_PAINT_MS": {
+        "percentile": 2600,
+        "category": "AVERAGE",
+        "distributions": [
+          {
+            "min": 0,
+            "max": 1,
+            "proportion": 0.7
+          },
+          {
+            "min": 1,
+            "max": 2,
+            "proportion": 0.2
+          },
+          {
+            "proportion": 0.1,
+            "min": 2
+          }
+        ]
+      }
+    },
+    "overall_category": "AVERAGE",
+    "initial_url": "https://example.com/"
+  },
+  "lighthouseResult": {
+    "requestedUrl": "https://example.com/",
+    "finalUrl": "https://example.com/",
+    "fetchTime": "2026-11-15T10:00:00.000Z",
+    "categories": {
+      "performance": {
+        "id": "performance",
+        "score": 0.724
+      },
+      "accessibility": {
+        "id": "accessibility",
+        "score": 0.874
+      },
+      "best-practices": {
+        "id": "best-practices",
+        "score": 0.96
+      },
+      "seo": {
+        "id": "seo",
+        "score": 1
+      }
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "score": 0.62,
+        "numericValue": 3142.5,
+        "displayValue": "3.1 s"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "score": 1,
+        "numericValue": 0.0312,
+        "displayValue": "0.031"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "score": 0.9,
+        "numericValue": 187,
+        "displayValue": "190 ms"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "score": 0.8,
+        "numericValue": 1620.3,
+        "displayValue": "1.6 s"
+      },
+      "speed-index": {
+        "id": "speed-index",
+        "score": 0.7,
+        "numericValue": 3410,
+        "displayValue": "3.4 s"
+      }
+    }
+  }
+}

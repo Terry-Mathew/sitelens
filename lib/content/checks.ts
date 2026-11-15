@@ -234,4 +234,20 @@ export const CHECK_COPY: Record<string, CheckCopy> = {
     howToFix:
       'This is optional. If you want one, ask your developer to add a short llms.txt file at the root of your site. Do not expect a measurable change.',
   },
+  'lab-performance': {
+    title: 'Lighthouse performance score (lab, mobile)',
+    clientTitle: 'Your website loads slowly in Google\'s mobile speed test',
+    whyItMatters:
+      'Google ran a simulated test of your homepage on a mobile device. A low score means the page can be slow to load and to use. Visitors may leave before they see your business. This is a lab test. It is not what real visitors measured.',
+    howToFix:
+      'Ask your developer to review the Google PageSpeed report for this page. Large images, extra scripts, and slow hosting are common causes. Test the page again after each change.',
+  },
+  'field-cwv': {
+    title: 'Core Web Vitals (real-user data from Google)',
+    clientTitle: 'Real visitors had a slow experience on your website',
+    whyItMatters:
+      'Google measures how real visitors experience a site in Chrome. At least one measure is rated poor. Slow loading or delayed response can make visitors leave. Google can also use these measures as a ranking signal.',
+    howToFix:
+      'Ask your developer to look at the measures that Google rates as poor. Fix the slowest measure first. Real-user data changes slowly, so allow several weeks to see the effect.',
+  },
 };
