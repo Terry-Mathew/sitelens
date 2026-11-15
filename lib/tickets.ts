@@ -8,7 +8,7 @@ const MESSAGE_EXPIRED = "This performance ticket has expired.";
 const MESSAGE_WRONG_URL = "This performance ticket is for a different website.";
 
 type Payload = { scanId: string; url: string; exp: number };
-type RedeemResult = { ok: true } | { ok: false; error: string };
+type RedeemResult = { ok: true } | { ok: false; error: string; unconfigured?: true };
 
 // Dev only. Used when Upstash is not configured and NODE_ENV is not production.
 const devUsed = new Set<string>();
@@ -110,7 +110,7 @@ export async function redeemPerformanceTicket(
   const { payload } = checked;
 
   const backend = getBackend();
-  if (backend.kind === "unconfigured") return { ok: false, error: MESSAGE_UNCONFIGURED };
+  if (backend.kind === "unconfigured") return { ok: false, unconfigured: true, error: MESSAGE_UNCONFIGURED };
 
   const markKey = `psi:ticket:${payload.scanId}`;
   if (backend.kind === "dev") {

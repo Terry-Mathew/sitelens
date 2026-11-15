@@ -36,7 +36,7 @@ vi.mock("@upstash/redis", () => {
 const MSG_HOUR = "You've reached the hourly scan limit. Please try again later.";
 const MSG_DAY = "Daily scan limit reached, try again tomorrow.";
 const MSG_LOGIN = "Too many attempts. Please wait 15 minutes.";
-const MSG_UNCONFIGURED = "Rate limiting is not configured.";
+const MSG_UNCONFIGURED = "The service is not available. Try again later.";
 
 async function load() {
   vi.resetModules();
@@ -118,10 +118,22 @@ describe("rate limits", () => {
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
     vi.stubEnv("NODE_ENV", "production");
     const { checkScanLimit, checkPageSpeedLimit, checkLoginLimit } = await load();
-    const expected = { ok: false, message: MSG_UNCONFIGURED };
+    const expected = { ok: false, unconfigured: true, message: MSG_UNCONFIGURED };
     expect(await checkScanLimit("1.2.3.4")).toEqual(expected);
     expect(await checkPageSpeedLimit("1.2.3.4")).toEqual(expected);
     expect(await checkLoginLimit("1.2.3.4")).toEqual(expected);
+  });
+
+  it("uses the Vercel KV names when the Upstash names are missing", async () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("KV_REST_API_URL", "https://kv.upstash.io");
+    vi.stubEnv("KV_REST_API_TOKEN", "kv-token");
+    vi.stubEnv("NODE_ENV", "production");
+    const { checkScanLimit, getBackend } = await load();
+    expect(getBackend().kind).toBe("redis");
+    expect(await checkScanLimit("1.2.3.4")).toEqual({ ok: true });
+    expect(limitCalls).toEqual(["scan:ip:1.2.3.4", "scan:global"]);
   });
 
   it("does not throw on import when env is missing", async () => {

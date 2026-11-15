@@ -21,5 +21,6 @@ export async function proxy(request: NextRequest): Promise<Response> {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Anchor each asset path, so a near-miss path such as /favicon.icox still goes through the proxy.
+  matcher: ['/((?!_next/static/|_next/image$|favicon\\.ico$).*)'],
 };

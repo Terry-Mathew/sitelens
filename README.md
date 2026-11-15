@@ -12,7 +12,7 @@ Stack: Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Firecrawl, Che
    - `SESSION_SECRET`: a long random string. Make one with `openssl rand -hex 32`.
    - `FIRECRAWL_API_KEY`: optional. Without it, SiteLens loads the page with its own fetcher. The scan then shows the limitation "firecrawl_unavailable", and JavaScript-only content is not seen.
    - `PAGESPEED_API_KEY`: optional locally. Without it, Google limits requests and the performance panel shows "unavailable".
-   - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional locally. Without them, rate limits are off in development. In production, SiteLens stops scans when they are missing.
+   - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional locally. Without them, rate limits are off in development. SiteLens also accepts the Vercel KV names `KV_REST_API_URL` and `KV_REST_API_TOKEN`. In production (this includes Vercel Preview deployments), these values are required. When they are missing, login, scans and PageSpeed all stop with the message "The service is not available. Try again later." (HTTP 503).
 3. Run `npm run dev` and open http://localhost:3000.
 
 Never commit `.env.local`. Git ignores it.
@@ -28,7 +28,7 @@ Change `ACCESS_CODE` or `SESSION_SECRET` in the Vercel project settings, then re
 Do these steps yourself. Do not add a payment method to any service for v1.
 
 1. **Vercel**: create an account and connect the repository. Do not deploy until you approve it.
-2. **Upstash**: create a free Redis database. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+2. **Upstash**: create a free Redis database. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. If you connect Upstash through the Vercel Marketplace, Vercel can create `KV_REST_API_URL` and `KV_REST_API_TOKEN` instead. SiteLens accepts both sets of names. Check the names in the Vercel dashboard.
 3. **Google PageSpeed**: in Google Cloud, enable the PageSpeed Insights API. Create an API key and restrict it to that API. Set a daily quota cap on the key. Use it as `PAGESPEED_API_KEY`.
 4. **Firecrawl**: create a free account (no payment method). Copy the key to `FIRECRAWL_API_KEY`.
 5. **Access**: choose an `ACCESS_CODE` and make a random `SESSION_SECRET`.
@@ -47,6 +47,6 @@ No deployment has been done. Do these steps only after the founder approves.
 
 1. Make sure `npm run lint`, `npm run test`, and `npm run build` pass.
 2. In Vercel, import the repository (or run `vercel` from the project folder).
-3. In the Vercel project settings, set all variables from `.env.example` for the Production environment.
+3. In the Vercel project settings, set all variables from `.env.example` for the Production environment. Also set them for the Preview environment if you use Preview deployments. Without `ACCESS_CODE`, `SESSION_SECRET` and the Upstash values, nobody can sign in.
 4. Deploy. Open the site and check that the login page loads, that a wrong code is refused, and that `/api/scan` returns 401 without a session.
 5. Scan one real homepage, check the dashboard, and export one PDF.

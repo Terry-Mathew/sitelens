@@ -171,7 +171,8 @@ describe("performance tickets (no Upstash)", () => {
     const ticket = await issuePerformanceTicket("scan-9", URL_A, NOW);
     expect(await redeemPerformanceTicket(ticket, URL_A, NOW + 1)).toEqual({
       ok: false,
-      error: "Rate limiting is not configured.",
+      unconfigured: true,
+      error: "The service is not available. Try again later.",
     });
   });
 });

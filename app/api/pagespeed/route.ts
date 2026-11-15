@@ -53,10 +53,12 @@ export async function POST(req: Request): Promise<Response> {
     } catch {
       return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
     }
+      if (!limit.ok && limit.unconfigured) return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
     if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
 
     // The ticket belongs to the validated URL that /api/scan issued it for. SET NX uses it once.
     const redeemed = await redeemPerformanceTicket(body.ticket, checked.url);
+    if (!redeemed.ok && redeemed.unconfigured) return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
     if (!redeemed.ok) return Response.json({ error: redeemed.error }, { status: 403 });
 
     // Both a result and an unavailable outcome are a normal 200 response.

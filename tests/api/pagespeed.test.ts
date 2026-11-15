@@ -87,6 +87,22 @@ describe('POST /api/pagespeed', () => {
     expect(redeemPerformanceTicket).not.toHaveBeenCalled();
   });
 
+  it('returns 503 (not 429) when rate limiting is not configured', async () => {
+    checkPageSpeedLimit.mockResolvedValue({ ok: false, unconfigured: true, message: 'The service is not available. Try again later.' });
+    const res = await POST(call({ url: 'example.com', ticket: 't' }));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: 'The service is not available. Try again later.' });
+    expect(redeemPerformanceTicket).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 (not 403) when the ticket store is not configured', async () => {
+    redeemPerformanceTicket.mockResolvedValue({ ok: false, unconfigured: true, error: 'The service is not available. Try again later.' });
+    const res = await POST(call({ url: 'example.com', ticket: 't' }));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: 'The service is not available. Try again later.' });
+    expect(providerFetch).not.toHaveBeenCalled();
+  });
+
   it('returns 503 when the limiter throws', async () => {
     checkPageSpeedLimit.mockRejectedValue(new Error('redis down'));
     const res = await POST(call({ url: 'example.com', ticket: 't' }));

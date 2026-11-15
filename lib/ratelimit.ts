@@ -1,16 +1,19 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-export type LimitResult = { ok: true } | { ok: false; message: string };
+// `unconfigured` is true when the rate-limit store is not set up. Routes then answer 503, not 429.
+export type LimitResult = { ok: true } | { ok: false; message: string; unconfigured?: true };
 
 const MESSAGE_HOURLY = "You've reached the hourly scan limit. Please try again later.";
 const MESSAGE_DAILY = "Daily scan limit reached, try again tomorrow.";
 const MESSAGE_LOGIN = "Too many attempts. Please wait 15 minutes.";
-export const MESSAGE_UNCONFIGURED = "Rate limiting is not configured.";
+export const MESSAGE_UNCONFIGURED = "The service is not available. Try again later.";
+const UNCONFIGURED: LimitResult = { ok: false, unconfigured: true, message: MESSAGE_UNCONFIGURED };
 
 /**
  * The single place that decides how Upstash is used.
- * - "redis": the env is set. Use Upstash.
+ * - "redis": the env is set. Use Upstash. The Vercel KV names
+ *   (KV_REST_API_URL, KV_REST_API_TOKEN) are a fallback for the Upstash names.
  * - "dev": the env is missing and this is not production. Skip the limits.
  * - "unconfigured": the env is missing in production. Fail closed.
  * The Redis client is created on first use, not at import.
@@ -23,8 +26,8 @@ export type Backend =
 let redisClient: Redis | undefined;
 
 export function getBackend(): Backend {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   if (url && token) {
     redisClient ??= new Redis({ url, token });
     return { kind: "redis", redis: redisClient };
@@ -63,7 +66,7 @@ async function checkPair(
 ): Promise<LimitResult> {
   const backend = getBackend();
   if (backend.kind === "dev") return { ok: true };
-  if (backend.kind === "unconfigured") return { ok: false, message: MESSAGE_UNCONFIGURED };
+  if (backend.kind === "unconfigured") return UNCONFIGURED;
 
   const perIp = await getLimiter(ipName, backend.redis).limit(ipKey);
   if (!perIp.success) return { ok: false, message: MESSAGE_HOURLY };
@@ -83,7 +86,7 @@ export function checkPageSpeedLimit(ip: string): Promise<LimitResult> {
 export async function checkLoginLimit(ip: string): Promise<LimitResult> {
   const backend = getBackend();
   if (backend.kind === "dev") return { ok: true };
-  if (backend.kind === "unconfigured") return { ok: false, message: MESSAGE_UNCONFIGURED };
+  if (backend.kind === "unconfigured") return UNCONFIGURED;
   const perIp = await getLimiter("loginIp", backend.redis).limit(`login:ip:${ip}`);
   if (!perIp.success) return { ok: false, message: MESSAGE_LOGIN };
   const global = await getLimiter("loginGlobal", backend.redis).limit("login:global");

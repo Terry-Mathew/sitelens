@@ -77,6 +77,14 @@ describe('POST /api/scan', () => {
     expect(gather).not.toHaveBeenCalled();
   });
 
+  it('returns 503 (not 429) when rate limiting is not configured', async () => {
+    checkScanLimit.mockResolvedValue({ ok: false, unconfigured: true, message: 'The service is not available. Try again later.' });
+    const res = await POST(scan({ url: 'example.com' }));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: 'The service is not available. Try again later.' });
+    expect(gather).not.toHaveBeenCalled();
+  });
+
   it('returns 503 when the limiter throws', async () => {
     checkScanLimit.mockRejectedValue(new Error('upstash down'));
     const res = await POST(scan({ url: 'example.com' }));

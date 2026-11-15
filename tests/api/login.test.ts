@@ -87,12 +87,20 @@ describe('POST /api/login', () => {
     expect(await res.json()).toEqual({ error: 'The service is not available. Try again later.' });
   });
 
-  it('fails closed with 500 when ACCESS_CODE or SESSION_SECRET is missing', async () => {
+  it('returns 503 when rate limiting is not configured', async () => {
+    checkLoginLimit.mockResolvedValue({ ok: false, unconfigured: true, message: 'The service is not available. Try again later.' });
+    const res = await POST(login({ code: 'open-sesame' }));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: 'The service is not available. Try again later.' });
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('fails closed with 503 when ACCESS_CODE or SESSION_SECRET is missing', async () => {
     for (const name of ['ACCESS_CODE', 'SESSION_SECRET']) {
       vi.stubEnv(name, '');
       const res = await POST(login({ code: '' }));
-      expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({ error: 'Access is not configured.' });
+      expect(res.status).toBe(503);
+      expect(await res.json()).toEqual({ error: 'The service is not available. Try again later.' });
       expect(res.headers.get('set-cookie')).toBeNull();
       vi.stubEnv(name, name === 'ACCESS_CODE' ? 'open-sesame' : 'test-secret-0123456789abcdef');
     }

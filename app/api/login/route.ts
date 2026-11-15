@@ -4,7 +4,6 @@ import { isAccessCode, sessionCookie, signSession } from '@/lib/security/session
 export const runtime = 'nodejs';
 
 const WRONG_CODE = "That code didn't work.";
-const NOT_CONFIGURED = 'Access is not configured.';
 const NOT_AVAILABLE = 'The service is not available. Try again later.';
 
 async function readCode(req: Request): Promise<string> {
@@ -20,9 +19,9 @@ async function readCode(req: Request): Promise<string> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  // Fail closed when the env is not set.
+  // Fail closed when the env is not set. This is a setup problem, so answer 503.
   if (!process.env.ACCESS_CODE || !process.env.SESSION_SECRET) {
-    return Response.json({ error: NOT_CONFIGURED }, { status: 500 });
+    return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
   }
 
   // Check the rate limit before the code, so each attempt counts.
@@ -33,6 +32,7 @@ export async function POST(req: Request): Promise<Response> {
     // Do not show limiter error details to the user.
     return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
   }
+  if (!limit.ok && limit.unconfigured) return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
   if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
 
   const code = await readCode(req);

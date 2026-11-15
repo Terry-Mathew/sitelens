@@ -75,4 +75,12 @@ describe('proxy', () => {
     expect(re.test('/api/scan')).toBe(true);
     expect(re.test('/login')).toBe(true);
   });
+
+  it('sends near-miss asset paths through the proxy', () => {
+    const re = new RegExp(`^${config.matcher[0]}$`);
+    expect(re.test('/favicon.icox')).toBe(true);
+    expect(re.test('/faviconXico')).toBe(true);
+    expect(re.test('/_next/imagex')).toBe(true);
+    expect(re.test('/_next/staticx')).toBe(true);
+  });
 });

@@ -40,6 +40,7 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
   }
+  if (!limit.ok && limit.unconfigured) return Response.json({ error: NOT_AVAILABLE }, { status: 503 });
   if (!limit.ok) return Response.json({ error: limit.message }, { status: 429 });
 
   try {
