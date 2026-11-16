@@ -77,16 +77,17 @@ Do each task alone, in a separate commit. Each task must keep the current behavi
 
 Do this only if a third check needs the same rule. Until then, the duplication is cheaper than a new helper.
 
-## Branch protection (manual step in GitHub)
+## Branch protection (active since 2026-11-16)
 
-`CLAUDE.md` and the CI file do not stop a merge by themselves. The founder must turn on branch protection in GitHub:
+`CLAUDE.md` and the CI file do not stop a merge by themselves. Branch protection on GitHub does. It is active on `main` since 2026-11-16, with these settings:
 
-1. Open the repository on GitHub. Go to **Settings > Branches** (or **Settings > Rules > Rulesets**).
-2. Add a rule for the `main` branch.
-3. Turn on **Require a pull request before merging**.
-4. Turn on **Require status checks to pass**. Select **Blocking checks**. The check appears after the first CI run.
-5. Do not select **Advisory quality report**.
-6. Optional: turn on **Require approvals** (1). This works only if a second GitHub account reviews.
-7. Turn on Dependabot alerts in **Settings > Code security**. They are free.
+1. **Require a pull request before merging:** on. Nobody can push directly to `main`.
+2. **Required approvals:** 0. GitHub does not let a person approve their own pull request. Set it to 1 only when a second GitHub account reviews.
+3. **Required status check:** **Blocking checks**, from GitHub Actions only. **Advisory quality report** is not required.
+4. **Branches must be up to date before merging:** off. Turn it on when more than one person or agent merges into `main` at the same time.
+5. **Include administrators:** on. The rules also apply to the repository owner.
+6. **Force pushes and deletion of `main`:** blocked.
 
-Until these steps are done, CI reports problems but does not block a merge.
+To change these settings, open the repository on GitHub and go to **Settings > Branches**.
+
+Open item: turn on Dependabot alerts in **Settings > Code security**. They are free.
