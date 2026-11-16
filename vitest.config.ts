@@ -13,7 +13,7 @@ export default defineConfig({
           name: "node",
           environment: "node",
           include: ["**/*.test.ts"],
-          exclude: ["node_modules/**", ".next/**"],
+          exclude: ["node_modules/**", ".next/**", ".claude/**"],
         },
       },
       {
@@ -22,7 +22,7 @@ export default defineConfig({
           name: "jsdom",
           environment: "jsdom",
           include: ["**/*.test.tsx"],
-          exclude: ["node_modules/**", ".next/**"],
+          exclude: ["node_modules/**", ".next/**", ".claude/**"],
           setupFiles: ["./tests/setup.ts"],
         },
       },

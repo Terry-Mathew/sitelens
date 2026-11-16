@@ -1,0 +1,8 @@
+{
+  "path": ["app", "components", "lib", "proxy.ts"],
+  "ignore": ["**/*.test.ts", "**/*.test.tsx", "components/ui/**"],
+  "minLines": 8,
+  "minTokens": 60,
+  "reporters": ["console"],
+  "gitignore": true
+}

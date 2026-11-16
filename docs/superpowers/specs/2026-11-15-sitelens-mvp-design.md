@@ -375,3 +375,14 @@ v1 generates the summary deterministically. The summary is produced by one funct
 6. **Performance provider interface.** Performance data comes through `PerformanceProvider { id; fetch(url): Promise<PerformanceOutcome> }`, with Google PageSpeed as the only v1 implementation. The rest of the app uses only SiteLens's own normalised `PerformanceResult` type. Field data is optional; every PageSpeed field is parsed defensively (unknown shape → `unavailable`, never a crash or a guessed value).
 7. **Privacy and browser storage.** Browser storage holds only scan results, report drafts, and branding. Never the access code, session token, or any credential (the session cookie is `HttpOnly` and not readable by scripts). A **Clear all data** action (header) and per-scan **Delete** are provided. The server does not log scanned URLs or results. The app loads no third-party analytics. The UI notes that scanned URLs are sent to Firecrawl and Google for analysis.
 8. **Limitations, not false findings.** Gathering produces a `limitations` list (`firecrawl_unavailable`, `homepage_blocked`, `homepage_unreachable`, `non_html`, `too_large`, `js_fallback`, `robots_unavailable`, `sitemap_unavailable`) and the client adds `performance_unavailable` / `field_data_unavailable`. Each maps to fixed plain-language text shown in the dashboard and the PDF scope section. Checks whose input is missing return `unable_to_check`, never `fail`.
+
+## 18. SaaS foundation (2026-11-16, proposed)
+
+The founder decided on 2026-11-16 that SiteLens becomes a subscription SaaS. The design is in `docs/superpowers/specs/2026-11-16-sitelens-saas-foundation-design.md`. The decisions are in ADR-0002 to ADR-0006 in `docs/architecture/decisions/`. Their status is "Proposed". When the founder approves them, they override these parts of this PRD:
+
+- Section 5 and Section 8: hosting changes from Vercel to Google Cloud Run. A PostgreSQL database (Neon) is added.
+- Section 4 (non-goals) and Section 17, item 7: accounts, plans, subscriptions, and server-side storage of scans and reports are added. Billing with Razorpay is a later milestone.
+- Section 17, item 2: per-user plan allowances replace the global daily scan limit. The Redis performance ticket is replaced by a one-time claim on the stored scan.
+- The shared access code is replaced by one account for each user (Neon Managed Better Auth).
+
+All product rules, evidence rules, SSRF rules, and logging rules in this PRD stay in force.
