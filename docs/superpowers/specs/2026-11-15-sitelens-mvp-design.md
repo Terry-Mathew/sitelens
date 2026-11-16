@@ -383,6 +383,10 @@ The founder decided on 2026-11-16 that SiteLens becomes a subscription SaaS. The
 - Section 5 and Section 8: hosting changes from Vercel to Google Cloud Run. A PostgreSQL database (Neon) is added.
 - Section 4 (non-goals) and Section 17, item 7: accounts, plans, subscriptions, and server-side storage of scans and reports are added. Billing with Razorpay is a later milestone.
 - Section 17, item 2: per-user plan allowances replace the global daily scan limit. The Redis performance ticket is replaced by a one-time claim on the stored scan.
-- The shared access code is replaced by one account for each user (Neon Managed Better Auth).
+- One account for each user is added (Neon Managed Better Auth).
 
 All product rules, evidence rules, SSRF rules, and logging rules in this PRD stay in force.
+
+## 19. Shared access code removed (2026-11-16, accepted)
+
+The founder decided on 2026-11-16 to remove the shared access code now (ADR-0007). This overrides Section 8.2 and the login limit in Section 17, item 2. The app has no sign-in until user accounts exist. The app must not go on the public internet before user sign-in exists.

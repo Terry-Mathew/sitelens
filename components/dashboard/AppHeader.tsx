@@ -37,16 +37,6 @@ export function AppHeader() {
     else router.push('/');
   }
 
-  async function onLogout() {
-    try {
-      await fetch('/api/logout', { method: 'POST' });
-    } catch {
-      // The proxy sends the user to the login page if the cookie stays.
-    }
-    router.replace('/login');
-    router.refresh();
-  }
-
   return (
     <header className="border-b bg-card">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 sm:px-6">
@@ -74,9 +64,6 @@ export function AppHeader() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button variant="outline" onClick={onLogout}>
-          Log out
-        </Button>
       </div>
     </header>
   );

@@ -96,12 +96,13 @@ describe('ScanDashboard', () => {
     expect(storage.getScan('scan-1')?.draft.performanceDefaulted).toBe(true);
   });
 
-  it('sends the user to the login page when /api/pagespeed returns 401', async () => {
+  it('a 401 response shows performance unavailable and stays on the page', async () => {
     const setPageSpeed = vi.spyOn(storage, 'setPageSpeed');
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Sign in again.' }, { status: 401 })));
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Not allowed.' }, { status: 401 })));
 
     render(<ScanDashboard id="scan-1" />);
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/login'));
+    expect(await screen.findByText('Performance data unavailable')).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
     expect(setPageSpeed).not.toHaveBeenCalled();
   });
 });

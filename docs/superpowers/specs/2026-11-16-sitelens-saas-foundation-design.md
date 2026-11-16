@@ -194,14 +194,14 @@ The reservation algorithm is in ADR-0005. These rules apply to all database writ
 | Database credentials | Secret Manager. A runtime role with data rights only (`SELECT`, `INSERT`, `UPDATE`, `DELETE` on `public`). A separate owner role runs migrations. |
 | Database traffic | TLS with `sslmode=verify-full` and `channel_binding=require`. |
 | Session revocation delay | Up to 5 minutes (`sessionDataTtl`). Accepted. |
-| Brute-force sign-in | Verify the Neon Auth limit (ADR-0004, item 1). If there is none, keep an IP limit on sign-in. |
+| Brute-force sign-in | Verify the Neon Auth limit (ADR-0004, item 1). If there is none, add an IP limit on sign-in. |
 | Cross-site request forgery | Better Auth cookies use `SameSite=strict` by default. Our POST routes also reject a request whose `Origin` header is not the app origin. |
 | Logs | No URL, no result, no email address in server logs. Log the error name only (as in v1). |
 | Webhook forgery (billing) | HMAC check before processing. Event id deduplication. |
 
 ## 8. Testing strategy
 
-- **Unit tests (unchanged):** checks, gather, report logic, and the SSRF guard keep their 834 tests.
+- **Unit tests (unchanged):** checks, gather, report logic, and the SSRF guard keep their existing tests.
 - **Database integration tests:** run against a real Postgres from `TEST_DATABASE_URL`. CI uses a `postgres:17` service container. Locally, use a Neon development branch. The test setup creates a stub `neon_auth.user` table, because plain Postgres does not have the Neon schema. If `TEST_DATABASE_URL` is missing, the suite fails with a clear message. It does not pass silently.
 - **Concurrency tests:** 20 parallel `reserveScan` calls with an allowance of 3 give exactly 3 reservations. 5 calls with the same key give one event.
 - **Integrity tests:** an `UPDATE` of `scans.result` fails. A second PageSpeed write changes nothing.
@@ -216,7 +216,7 @@ The reservation algorithm is in ADR-0005. These rules apply to all database writ
 4. **Retention.** Proposal: scans and reports 12 months, usage events 24 months (ADR-0006).
 5. **Paid services and new accounts (approval gates).** Google Cloud billing, Neon Launch plan (7-day restore), a custom email provider for auth emails, and a Cloud Storage bucket for the weekly dump.
 6. **Upstash.** Proposal: remove it if Neon Auth limits failed sign-ins. Otherwise keep it for the sign-in limit only.
-7. **Current test users.** Accounts replace the access code. Existing browser scans stay in the browser and are not moved.
+7. **Current test users.** ADR-0007 removed the access code, so the app has no sign-in until accounts exist. Existing browser scans stay in the browser and are not moved.
 
 ## 10. Left to the builder
 

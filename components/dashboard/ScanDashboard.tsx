@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,7 +20,7 @@ import { withPerformanceDefaults, type ReportDraft } from '@/lib/report/draft';
 import { StorageFullError, getScan, setPageSpeed, updateDraft, type ScanRecord } from '@/lib/storage';
 import type { LimitationCode } from '@/lib/types';
 
-type PageSpeedReply = { kind: 'ok'; outcome: PageSpeedOutcome } | { kind: 'login' } | { kind: 'failed' };
+type PageSpeedReply = { kind: 'ok'; outcome: PageSpeedOutcome } | { kind: 'failed' };
 
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
@@ -47,7 +46,6 @@ async function requestPageSpeed(url: string, ticket: string): Promise<PageSpeedR
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url, ticket }),
     });
-    if (res.status === 401) return { kind: 'login' };
     if (res.status !== 200) return { kind: 'failed' };
     const data: unknown = await res.json().catch(() => null);
     return isOutcome(data) ? { kind: 'ok', outcome: data } : { kind: 'failed' };
@@ -134,7 +132,6 @@ export function ScanDashboard({ id }: { id: string }) {
 }
 
 function LoadedDashboard({ id }: { id: string }) {
-  const router = useRouter();
   const [initial] = useState(() => loadInitialState(id));
   const [record, setRecord] = useState<ScanRecord | null>(initial.record);
   const [storageError, setStorageError] = useState<string | null>(initial.storageError);
@@ -144,11 +141,6 @@ function LoadedDashboard({ id }: { id: string }) {
   // The ticket is single-use. These refs stop a second request, also in React strict mode.
   const requested = useRef(false);
   const mounted = useRef(true);
-  const routerRef = useRef(router);
-
-  useEffect(() => {
-    routerRef.current = router;
-  }, [router]);
 
   useEffect(() => {
     mounted.current = true;
@@ -162,10 +154,6 @@ function LoadedDashboard({ id }: { id: string }) {
     if (!current || current.pagespeed || !current.performanceTicket || requested.current) return;
     requested.current = true;
     void requestPageSpeed(current.scan.url, current.performanceTicket).then((reply) => {
-      if (reply.kind === 'login') {
-        routerRef.current.push('/login');
-        return;
-      }
       let outcome: PageSpeedOutcome | null = null;
       let error: string | null = null;
       // Save only a 200 outcome. A failed request must not lock in an unavailable result.

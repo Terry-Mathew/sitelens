@@ -1,5 +1,5 @@
 {
-  "path": ["app", "components", "lib", "proxy.ts"],
+  "path": ["app", "components", "lib"],
   "ignore": ["**/*.test.ts", "**/*.test.tsx", "components/ui/**"],
   "minLines": 8,
   "minTokens": 60,

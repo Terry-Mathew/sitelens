@@ -1,7 +1,6 @@
 import { runChecks } from '@/lib/checks/run';
 import { gather } from '@/lib/gather';
 import { checkScanLimit, getClientIp, type LimitResult } from '@/lib/ratelimit';
-import { requireSession } from '@/lib/security/session';
 import { normaliseAndValidateUrl } from '@/lib/security/url';
 import { issuePerformanceTicket } from '@/lib/tickets';
 import type { ScanResponse, ScanResult } from '@/lib/types';
@@ -27,9 +26,6 @@ async function readUrl(req: Request): Promise<string | null> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const denied = await requireSession(req);
-  if (denied) return denied;
-
   const input = await readUrl(req);
   if (input === null) return Response.json({ error: BAD_URL }, { status: 400 });
 

@@ -8,7 +8,7 @@ const eslintConfig = defineConfig([
   // Advisory complexity limits. They warn and do not fail the check.
   // See docs/architecture/quality-baseline.md for the baseline.
   {
-    files: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}", "proxy.ts"],
+    files: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
     ignores: ["**/*.test.ts", "**/*.test.tsx", "components/ui/**"],
     rules: {
       complexity: ["warn", 15],

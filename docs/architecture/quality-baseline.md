@@ -38,7 +38,7 @@ The two security functions are complex because they check many cases in order. T
 
 The scan found no large duplication and no parallel implementations of a business rule. The module boundaries in `CLAUDE.md` agree with the code. These are the confirmed items, most important first.
 
-1. **The rate-limit result is turned into an HTTP response in three places.** `app/api/login/route.ts`, `app/api/scan/route.ts`, and `app/api/pagespeed/route.ts` each repeat the same `try / catch` and the same 503 and 429 mapping. If the rule changes, all three must change. jscpd found one pair. The third copy differs by one line.
+1. **The rate-limit result is turned into an HTTP response in more than one place.** `app/api/scan/route.ts` and `app/api/pagespeed/route.ts` each repeat the same `try / catch` and the same 503 and 429 mapping. If the rule changes, both must change. (A third copy was in `app/api/login/route.ts`. ADR-0007 removed that route on 2026-11-16.)
 2. **Unused scaffold files and dependencies.** `components/ui/badge.tsx`, `separator.tsx`, `sonner.tsx`, `tabs.tsx` have no users. The dependencies `next-themes` and `sonner` are only used by `sonner.tsx`.
 3. **One function has two names.** `lib/checks/helpers.ts` exports `withTextHtml` as a second name for `withHtml`. Six checks use the second name. Two names for one thing break the "one word for one thing" rule.
 4. **The length rule for title and meta description is repeated.** `lib/checks/technical/title.ts` and `meta-description.ts` repeat the empty, in-range, and out-of-range logic. This is small, and each check is easy to read. Low priority.
@@ -50,11 +50,11 @@ Do each task alone, in a separate commit. Each task must keep the current behavi
 
 ### Task A: one helper for the rate-limit response (finding 1)
 
-- **Affected files:** the three route handlers, plus `lib/ratelimit.ts`.
-- **Risk now:** a future change to the 503 or 429 rule can miss one route. The login route can then leak limiter details or allow too many attempts.
-- **Preferred implementation:** keep `checkScanLimit`, `checkPageSpeedLimit`, and `checkLoginLimit`. Add one function, for example `limitResponse(result)`, in `lib/ratelimit.ts` that returns `Response | null`.
-- **Remove:** the three copies of the 503 and 429 mapping.
-- **Regression risk:** the order of checks in each route must stay the same (session, then limit, then body). The PageSpeed route must still verify the ticket before the limit and redeem it after the limit.
+- **Affected files:** the two route handlers, plus `lib/ratelimit.ts`.
+- **Risk now:** a future change to the 503 or 429 rule can miss one route.
+- **Preferred implementation:** keep `checkScanLimit` and `checkPageSpeedLimit`. Add one function, for example `limitResponse(result)`, in `lib/ratelimit.ts` that returns `Response | null`. Do this task together with the sign-in work, because sign-in can add a third limit.
+- **Remove:** the copies of the 503 and 429 mapping.
+- **Regression risk:** the order of checks in each route must stay the same (body, then limit). The PageSpeed route must still verify the ticket before the limit and redeem it after the limit.
 - **Tests that must pass:** all route tests in `app/api/**`, `lib/ratelimit` tests, and a new unit test for `limitResponse` with the ok, limited, unconfigured, and thrown cases.
 
 ### Task B: remove unused scaffold code (finding 2)

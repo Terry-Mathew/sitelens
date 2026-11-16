@@ -8,20 +8,19 @@ Stack: Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Firecrawl, Che
 
 1. Run `npm install`.
 2. Copy `.env.example` to `.env.local`. Set these values:
-   - `ACCESS_CODE`: the shared code that users type to enter the app.
-   - `SESSION_SECRET`: a long random string. Make one with `openssl rand -hex 32`.
+   - `SESSION_SECRET`: a long random string that signs the PageSpeed tickets. Make one with `openssl rand -hex 32`.
    - `FIRECRAWL_API_KEY`: optional. Without it, SiteLens loads the page with its own fetcher. The scan then shows the limitation "firecrawl_unavailable", and JavaScript-only content is not seen.
    - `PAGESPEED_API_KEY`: optional locally, required in production. Without it, Google limits requests and the performance panel shows "Performance data was unavailable at the time of the review." A key or quota problem shows the same neutral text, so it does not blame the client site.
-   - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional locally. Without them, rate limits are off in development. SiteLens also accepts the Vercel KV names `KV_REST_API_URL` and `KV_REST_API_TOKEN`. In production (this includes Vercel Preview deployments), these values are required. When they are missing, login, scans and PageSpeed all stop with the message "The service is not available. Try again later." (HTTP 503).
+   - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: optional locally. Without them, rate limits are off in development. SiteLens also accepts the Vercel KV names `KV_REST_API_URL` and `KV_REST_API_TOKEN`. In production (this includes Vercel Preview deployments), these values are required. When they are missing, scans and PageSpeed both stop with the message "The service is not available. Try again later." (HTTP 503).
 3. Run `npm run dev` and open http://localhost:3000.
 
 Never commit `.env.local`. Git ignores it.
 
 Other scripts: `npm run test` (Vitest), `npm run lint` (ESLint), `npm run build` (production build).
 
-## Change the access code
+## Access
 
-Change `ACCESS_CODE` or `SESSION_SECRET` in the Vercel project settings, then redeploy. Everyone is logged out, and each user must sign in again. Change `SESSION_SECRET` to log out users even if the code stays the same.
+SiteLens has no sign-in. The app opens directly on the scan page. Any person who can open the app can run scans. Do not put the app on the public internet before user sign-in exists (see `docs/architecture/decisions/0007-remove-shared-access-code.md`).
 
 ## Founder setup tasks
 
@@ -31,7 +30,7 @@ Do these steps yourself. Do not add a payment method to any service for v1.
 2. **Upstash**: create a free Redis database. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. If you connect Upstash through the Vercel Marketplace, Vercel can create `KV_REST_API_URL` and `KV_REST_API_TOKEN` instead. SiteLens accepts both sets of names. Check the names in the Vercel dashboard.
 3. **Google PageSpeed**: in Google Cloud, enable the PageSpeed Insights API. Create an API key and restrict it to that API. Set a daily quota cap on the key at 100 queries or more, because SiteLens allows up to 100 PageSpeed checks each day. Use it as `PAGESPEED_API_KEY`.
 4. **Firecrawl**: create a free account (no payment method). Copy the key to `FIRECRAWL_API_KEY`.
-5. **Access**: choose an `ACCESS_CODE` and make a random `SESSION_SECRET`.
+5. **Ticket secret**: make a random `SESSION_SECRET`.
 6. **Review the text**: read the "why it matters" and "how to fix" text for every check in `lib/content/` before you share the app.
 
 ## Privacy
@@ -47,6 +46,6 @@ No deployment has been done. Do these steps only after the founder approves.
 
 1. Make sure `npm run lint`, `npm run test`, and `npm run build` pass.
 2. In Vercel, import the repository (or run `vercel` from the project folder).
-3. In the Vercel project settings, set all variables from `.env.example` for the Production environment. Also set them for the Preview environment if you use Preview deployments. Without `ACCESS_CODE`, `SESSION_SECRET` and the Upstash values, nobody can sign in.
-4. Deploy. Open the site and check that the login page loads, that a wrong code is refused, and that `/api/scan` returns 401 without a session.
+3. In the Vercel project settings, set all variables from `.env.example` for the Production environment. Also set them for the Preview environment if you use Preview deployments. Without `SESSION_SECRET` and the Upstash values, scans do not work.
+4. Deploy only after user sign-in exists. Open the site and check that a person who is not signed in cannot run a scan.
 5. Scan one real homepage, check the dashboard, and export one PDF.

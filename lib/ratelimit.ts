@@ -6,7 +6,6 @@ export type LimitResult = { ok: true } | { ok: false; message: string; unconfigu
 
 const MESSAGE_HOURLY = "You've reached the hourly scan limit. Please try again later.";
 const MESSAGE_DAILY = "Daily scan limit reached, try again tomorrow.";
-const MESSAGE_LOGIN = "Too many attempts. Please wait 15 minutes.";
 export const MESSAGE_UNCONFIGURED = "The service is not available. Try again later.";
 const UNCONFIGURED: LimitResult = { ok: false, unconfigured: true, message: MESSAGE_UNCONFIGURED };
 
@@ -35,7 +34,7 @@ export function getBackend(): Backend {
   return process.env.NODE_ENV === "production" ? { kind: "unconfigured" } : { kind: "dev" };
 }
 
-type LimiterName = "scanIp" | "scanGlobal" | "psiIp" | "psiGlobal" | "loginIp" | "loginGlobal";
+type LimiterName = "scanIp" | "scanGlobal" | "psiIp" | "psiGlobal";
 
 const limiters = new Map<LimiterName, Ratelimit>();
 
@@ -49,8 +48,6 @@ function getLimiter(name: LimiterName, redis: Redis): Ratelimit {
       scanGlobal: globalDay,
       psiIp: perIpHour,
       psiGlobal: globalDay,
-      loginIp: () => Ratelimit.slidingWindow(10, "15 m"),
-      loginGlobal: () => Ratelimit.slidingWindow(50, "15 m"),
     }[name]();
     limiter = new Ratelimit({ redis, limiter: config, prefix: `sitelens:${name}` });
     limiters.set(name, limiter);
@@ -81,16 +78,6 @@ export function checkScanLimit(ip: string): Promise<LimitResult> {
 
 export function checkPageSpeedLimit(ip: string): Promise<LimitResult> {
   return checkPair("psiIp", `psi:ip:${ip}`, "psiGlobal", "psi:global");
-}
-
-export async function checkLoginLimit(ip: string): Promise<LimitResult> {
-  const backend = getBackend();
-  if (backend.kind === "dev") return { ok: true };
-  if (backend.kind === "unconfigured") return UNCONFIGURED;
-  const perIp = await getLimiter("loginIp", backend.redis).limit(`login:ip:${ip}`);
-  if (!perIp.success) return { ok: false, message: MESSAGE_LOGIN };
-  const global = await getLimiter("loginGlobal", backend.redis).limit("login:global");
-  return global.success ? { ok: true } : { ok: false, message: MESSAGE_LOGIN };
 }
 
 /**
