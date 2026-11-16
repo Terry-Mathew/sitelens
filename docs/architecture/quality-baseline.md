@@ -90,4 +90,4 @@ Do this only if a third check needs the same rule. Until then, the duplication i
 
 To change these settings, open the repository on GitHub and go to **Settings > Branches**.
 
-Open item: turn on Dependabot alerts in **Settings > Code security**. They are free.
+Dependabot alerts are on since 2026-11-16 (**Settings > Code security**). GitHub warns when a dependency has a known vulnerability. Automatic Dependabot update pull requests are not turned on.
