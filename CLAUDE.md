@@ -5,6 +5,9 @@ Agents forget between sessions. Before you do any work, read these files:
 1. `docs/superpowers/specs/2026-11-15-sitelens-mvp-design.md`: the product requirements. Section 17 overrides earlier sections.
 2. `docs/superpowers/plans/2026-11-15-sitelens-mvp.md`: the task plan.
 3. The last entries in `.superpowers/sdd/2026-11-15-sitelens-mvp/progress.md`: the progress ledger. This file is local and git ignores it. If it is missing, use `git log`.
+4. `docs/architecture/decisions/README.md`: the list of architecture decisions. A "Proposed" decision is not approved. Do not implement it until the founder approves it.
+
+Next milestone (proposed, not approved): `docs/superpowers/specs/2026-11-16-sitelens-saas-foundation-design.md` and `docs/superpowers/plans/2026-11-16-sitelens-saas-foundation.md`. Read both before you work on accounts, the database, or Cloud Run.
 
 Trust the ledger and `git log` more than your memory.
 
@@ -55,7 +58,117 @@ You must get approval from the founder before you do these things:
 - Before you build the interface, use the `frontend-design` and `design-taste-frontend` skills.
 - Before you write Next.js code, read the guide in `node_modules/next/dist/docs/`. This Next.js version uses `proxy.ts`, not `middleware.ts`.
 - Use the `superpowers` skills for plans, execution, debugging, and code review.
-- Before you say that work is complete, run `npm run test`, `npm run lint`, and `npm run build`. Report the result honestly.
+- Before you say that work is complete, run `npm run check` and `npm run build`. Report the result honestly.
+
+## Architecture and code quality rules
+
+These rules apply to every change. Automated checks enforce some of them. The other rules depend on you. The founder is not a programmer. Do not expect the founder to read code line by line.
+
+### Inspect before you create
+
+- Read the relevant code before you write new code.
+- Search for a component, function, utility, or pattern that already does the job. Search for names and for behavior.
+- Reuse existing functionality. Do not make a second implementation of the same business logic. If a second implementation is necessary, write the reason in an ADR or in the review summary.
+- Extend an existing module before you create a competing module.
+- Do not add a dependency when an existing dependency or the platform can do the job. Do not add a second library for a job that an existing library does.
+- Keep functions focused. Do not add a factory, a layer, or an abstraction for code that has one use.
+- Do not refactor unrelated code while you implement a feature. Record the cleanup as a separate task.
+- Do not make a breaking change without approval. Explain the impact first.
+- Use the simplest solution that agrees with the existing architecture.
+
+### Module boundaries
+
+Keep each responsibility in its module. Do not move a responsibility without an ADR.
+
+| Responsibility | Location | Rule |
+|---|---|---|
+| URL safety | `lib/security/` | Each fetch of a user URL goes through this module first. |
+| Network calls for a scan | `lib/gather/` | This is the only module that fetches a scanned site. |
+| Checks | `lib/checks/<category>/` | Pure functions. No network calls and no storage. |
+| Performance data | `lib/performance/` | The provider stays behind the interface in `types.ts`. |
+| Reviewed text | `lib/content/` | The only source of explanations and fixes. |
+| Report logic | `lib/report/` | Pure functions. They never change a `ScanResult`. |
+| Rate limits and tickets | `lib/ratelimit.ts`, `lib/tickets.ts` | Route handlers call these. Route handlers do not count requests themselves. |
+| HTTP | `app/api/*/route.ts` | Thin handlers: session, rate limit, validation, one call to `lib/`, HTTP response. No business rules. |
+| Interface | `app/`, `components/` | No business rules. Use `lib/report/` for report decisions. |
+| Database (proposed in ADR-0003) | `lib/db/` | The only place for SQL and Drizzle calls. |
+
+### Mandatory check before a significant change
+
+A significant change is a new feature, a change in more than one module, a new dependency, a change to data, authentication, or security, or a schema change.
+
+Before you write code for a significant change, answer these questions:
+
+1. What existing code is relevant?
+2. What can you reuse?
+3. Which files or modules must change?
+4. Can the change cause duplication or conflicting logic?
+5. Does the approach follow the existing architecture?
+
+Then explain the approach to the founder in plain English. Get approval before you start. Use `docs/templates/IMPLEMENTATION_REVIEW.md` for this record.
+
+For a routine, low-risk change, continue without approval. Examples: a bug fix in one module, a text change, or a new test.
+
+### Architecture decision records (ADRs)
+
+Write an ADR in `docs/architecture/decisions/` when a change adds or changes one of these:
+
+- An architectural pattern.
+- A significant dependency or framework.
+- A database design or a data flow.
+- An authentication or security decision.
+- The responsibility of a module.
+- A significant departure from the existing design.
+
+Copy `ADR_TEMPLATE.md` and use the next number. Set the status to "Proposed" until the founder approves it. Do not write an ADR for a small bug fix or a routine interface change. Do not invent history. If the reason for existing code is not known, write "Unknown".
+
+### Quality gates
+
+Blocking checks must pass. The CI workflow in `.github/workflows/ci.yml` runs them on each pull request and each push to `main`:
+
+- `npm run lint`: ESLint errors fail the check.
+- `npm run typecheck`: TypeScript errors fail the check.
+- `npm run test`: a failing test fails the check.
+- `npm run build`: a failing production build fails the check.
+- `npm run audit:prod`: a high or critical vulnerability in a production dependency fails the check.
+
+Advisory checks report problems but do not fail:
+
+- Complexity and function-length warnings in `npm run lint`.
+- `npm run quality`: Knip (unused files, exports, and dependencies) and jscpd (duplicate code).
+
+Do not add new warnings to code that you change. Do not disable a rule, skip a test, or relax a threshold to make a check pass. If you think a rule is wrong, ask the founder and record the reason. The current baseline is in `docs/architecture/quality-baseline.md`.
+
+### Self-review before you say that work is complete
+
+Read your own diff as a senior engineer. Look for these problems:
+
+- Duplicate functionality.
+- Unnecessary new files or abstractions.
+- Conflict with the module boundaries above.
+- Dead or unused code.
+- Security vulnerabilities, for example a fetch that does not use `lib/security/`.
+- Missing error handling.
+- Performance problems.
+- Breaking changes.
+- Missing or weak tests.
+- Unnecessary dependencies.
+
+Correct each confirmed problem. Then run the blocking checks.
+
+### Founder review summary
+
+For a significant architecture change, a security-sensitive change, a database migration, or a breaking change, give the founder a plain-English summary. Then ask for approval. Answer these questions:
+
+1. What changed?
+2. Why was it necessary?
+3. Did we reuse existing functionality?
+4. Did we add a dependency?
+5. What can break?
+6. Which tests did we run, and what was the result?
+7. Which risks are still open?
+
+The approval of the founder is not proof of technical correctness. The automated checks and an independent code review (`superpowers:requesting-code-review`) are still necessary.
 
 ## Writing rules
 
