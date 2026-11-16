@@ -35,7 +35,6 @@ vi.mock("@upstash/redis", () => {
 
 const MSG_HOUR = "You've reached the hourly scan limit. Please try again later.";
 const MSG_DAY = "Daily scan limit reached, try again tomorrow.";
-const MSG_LOGIN = "Too many attempts. Please wait 15 minutes.";
 const MSG_UNCONFIGURED = "The service is not available. Try again later.";
 
 async function load() {
@@ -75,41 +74,19 @@ describe("rate limits", () => {
   });
 
   it("uses the configured windows", async () => {
-    const { checkScanLimit, checkLoginLimit } = await load();
+    const { checkScanLimit } = await load();
     await checkScanLimit("1.2.3.4");
-    await checkLoginLimit("1.2.3.4");
     const kinds = created.map((c) => c.limiter);
     expect(kinds).toContainEqual({ kind: "sliding", n: 10, w: "1 h" });
     expect(kinds).toContainEqual({ kind: "fixed", n: 100, w: "1 d" });
-    expect(kinds).toContainEqual({ kind: "sliding", n: 10, w: "15 m" });
-  });
-
-  it("checks login with its own key and message", async () => {
-    limitResults.set("login:ip:9.9.9.9", false);
-    const { checkLoginLimit } = await load();
-    expect(await checkLoginLimit("9.9.9.9")).toEqual({ ok: false, message: MSG_LOGIN });
-  });
-
-  it("denies login when the global login limiter denies", async () => {
-    limitResults.set("login:global", false);
-    const { checkLoginLimit } = await load();
-    expect(await checkLoginLimit("9.9.9.9")).toEqual({ ok: false, message: MSG_LOGIN });
-    expect(limitCalls).toEqual(["login:ip:9.9.9.9", "login:global"]);
-  });
-
-  it("uses a 50 per 15 minute window for the global login limiter", async () => {
-    const { checkLoginLimit } = await load();
-    await checkLoginLimit("9.9.9.9");
-    expect(created.map((c) => c.limiter)).toContainEqual({ kind: "sliding", n: 50, w: "15 m" });
   });
 
   it("is a no-op when Upstash env is missing and NODE_ENV !== production", async () => {
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
-    const { checkScanLimit, checkPageSpeedLimit, checkLoginLimit } = await load();
+    const { checkScanLimit, checkPageSpeedLimit } = await load();
     expect(await checkScanLimit("1.2.3.4")).toEqual({ ok: true });
     expect(await checkPageSpeedLimit("1.2.3.4")).toEqual({ ok: true });
-    expect(await checkLoginLimit("1.2.3.4")).toEqual({ ok: true });
     expect(limitCalls).toEqual([]);
   });
 
@@ -117,11 +94,10 @@ describe("rate limits", () => {
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
     vi.stubEnv("NODE_ENV", "production");
-    const { checkScanLimit, checkPageSpeedLimit, checkLoginLimit } = await load();
+    const { checkScanLimit, checkPageSpeedLimit } = await load();
     const expected = { ok: false, unconfigured: true, message: MSG_UNCONFIGURED };
     expect(await checkScanLimit("1.2.3.4")).toEqual(expected);
     expect(await checkPageSpeedLimit("1.2.3.4")).toEqual(expected);
-    expect(await checkLoginLimit("1.2.3.4")).toEqual(expected);
   });
 
   it("uses the Vercel KV names when the Upstash names are missing", async () => {

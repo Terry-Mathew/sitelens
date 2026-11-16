@@ -1,15 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireSession = vi.fn();
 const checkPageSpeedLimit = vi.fn();
 const normaliseAndValidateUrl = vi.fn();
 const redeemPerformanceTicket = vi.fn();
 const verifyPerformanceTicket = vi.fn();
 const providerFetch = vi.fn();
 
-vi.mock('@/lib/security/session', () => ({
-  requireSession: (req: Request) => requireSession(req),
-}));
 vi.mock('@/lib/ratelimit', () => ({
   checkPageSpeedLimit: (ip: string) => checkPageSpeedLimit(ip),
   getClientIp: (req: Request) => req.headers.get('x-real-ip') ?? 'unknown',
@@ -39,7 +35,6 @@ function call(body: unknown) {
 }
 
 beforeEach(() => {
-  requireSession.mockReset().mockResolvedValue(null);
   checkPageSpeedLimit.mockReset().mockResolvedValue({ ok: true });
   normaliseAndValidateUrl.mockReset().mockResolvedValue({ ok: true, url: 'https://example.com/' });
   redeemPerformanceTicket.mockReset().mockResolvedValue({ ok: true });
@@ -54,13 +49,13 @@ describe('POST /api/pagespeed', () => {
     expect(Object.keys(route).filter((k) => ['GET', 'PUT', 'PATCH', 'DELETE'].includes(k))).toEqual([]);
   });
 
-  it('returns 401 without a session and does nothing else', async () => {
-    requireSession.mockResolvedValue(new Response(null, { status: 401 }));
+  it('runs a check without a session cookie or an access code', async () => {
+    vi.stubEnv('ACCESS_CODE', '');
     const res = await POST(call({ url: 'example.com', ticket: 't' }));
-    expect(res.status).toBe(401);
-    expect(checkPageSpeedLimit).not.toHaveBeenCalled();
-    expect(redeemPerformanceTicket).not.toHaveBeenCalled();
-    expect(providerFetch).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+    expect(res.status).toBe(200);
+    expect(redeemPerformanceTicket).toHaveBeenCalledWith('t', 'https://example.com/');
+    expect(providerFetch).toHaveBeenCalledWith('https://example.com/');
   });
 
   it.each([

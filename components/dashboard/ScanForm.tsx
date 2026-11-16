@@ -45,10 +45,6 @@ export function ScanForm() {
     }
 
     try {
-      if (res.status === 401) {
-        router.push('/login');
-        return;
-      }
       const data: unknown = await res.json().catch(() => null);
       if (res.ok && data && typeof data === 'object' && 'scan' in data) {
         const { scan, performanceTicket } = data as ScanResponse;

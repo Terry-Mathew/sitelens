@@ -4,7 +4,7 @@
 
 > **Do not start.** This plan needs founder approval of ADR-0002 to ADR-0006 and of the open decisions in Section 9 of the spec. Task 0 lists the approvals.
 
-**Goal:** Change SiteLens from one shared access code with browser storage to user accounts, plans, scan allowances, and server-side scans on Neon PostgreSQL, ready to run on Google Cloud Run.
+**Goal:** Change SiteLens from an app with no sign-in and browser storage (ADR-0007 removed the shared access code) to user accounts, plans, scan allowances, and server-side scans on Neon PostgreSQL, ready to run on Google Cloud Run.
 
 **Architecture:** Neon Managed Better Auth gives the user id (`lib/auth/`). A separate entitlements module (`lib/entitlements/`) reserves each scan in a Postgres transaction with an idempotency key. All SQL lives in `lib/db/` (Drizzle ORM, node-postgres, pooled connection). The scanner, checks, report logic, PDF, and SSRF guard do not change.
 
@@ -97,13 +97,14 @@
 ### Task 3: Accounts with Neon Managed Better Auth
 
 **Files:**
-- Create: `lib/auth/server.ts`, `lib/auth/session.ts`, `app/api/auth/[...path]/route.ts`, `app/sign-in/page.tsx`, `app/sign-up/page.tsx`
-- Modify: `proxy.ts`, `app/api/scan/route.ts`, `app/api/pagespeed/route.ts`, `app/api/logout/route.ts`, `.env.example`, `README.md`
-- Delete: `app/api/login/route.ts`, `app/login/page.tsx`, the access-code parts of `lib/security/session.ts` and their tests
-- Test: `tests/auth/session.test.ts`, `tests/proxy.test.ts`, the route tests
+- Create: `lib/auth/server.ts`, `lib/auth/session.ts`, `app/api/auth/[...path]/route.ts`, `app/sign-in/page.tsx`, `app/sign-up/page.tsx`, `proxy.ts`, a sign-out button in `components/dashboard/AppHeader.tsx`
+- Modify: `app/api/scan/route.ts`, `app/api/pagespeed/route.ts`, `components/dashboard/ScanForm.tsx` and `ScanDashboard.tsx` (send the user to `/sign-in` on 401), `.env.example`, `README.md`, `CLAUDE.md` (security rule 3)
+- Test: `tests/auth/session.test.ts`, `tests/proxy.test.ts`, the route tests, the UI tests
+
+ADR-0007 already removed the shared access code, `proxy.ts`, and the login and logout routes. This task adds sign-in to an app that has none.
 
 **Interfaces:**
-- Produces: `requireUser(req: Request): Promise<{ ok: true; userId: string } | { ok: false; response: Response }>`. This replaces `requireSession` in every route handler.
+- Produces: `requireUser(req: Request): Promise<{ ok: true; userId: string } | { ok: false; response: Response }>`. Every route handler calls it first.
 - Consumes: `auth.getSession()` from `createNeonAuth({ baseUrl: NEON_AUTH_BASE_URL, cookies: { secret: NEON_AUTH_COOKIE_SECRET } })`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -113,9 +114,9 @@
   - `proxy sends a page request without a session to /sign-in`.
   - `POST routes reject a foreign Origin header with 403`.
 - [ ] **Step 2:** Run the tests. Expect failure.
-- [ ] **Step 3:** Implement with the Neon Auth Next.js SDK. Use the prebuilt auth UI only if it accepts SiteLens styling. Otherwise write two small forms with shadcn components. Remove the access code completely. Do not keep two auth systems.
+- [ ] **Step 3:** Implement with the Neon Auth Next.js SDK. Use the prebuilt auth UI only if it accepts SiteLens styling. Otherwise write two small forms with shadcn components.
 - [ ] **Step 4:** Run `npm run check` and `npm run build`. Check the sign-in by hand against the Neon development branch.
-- [ ] **Step 5:** Commit: `feat: replace the access code with user accounts`. Write the founder review summary (CLAUDE.md), because this is a breaking security change.
+- [ ] **Step 5:** Commit: `feat: add user accounts with Neon Auth`. Write the founder review summary (CLAUDE.md), because this is a security change.
 
 ### Task 4: Profile and free subscription on first sign-in
 

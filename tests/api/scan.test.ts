@@ -1,15 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makePage } from '@/tests/helpers/page';
 
-const requireSession = vi.fn();
 const checkScanLimit = vi.fn();
 const normaliseAndValidateUrl = vi.fn();
 const gather = vi.fn();
 const issuePerformanceTicket = vi.fn();
 
-vi.mock('@/lib/security/session', () => ({
-  requireSession: (req: Request) => requireSession(req),
-}));
 vi.mock('@/lib/ratelimit', () => ({
   checkScanLimit: (ip: string) => checkScanLimit(ip),
   getClientIp: (req: Request) => req.headers.get('x-real-ip') ?? 'unknown',
@@ -40,7 +36,6 @@ function scan(body: unknown) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  requireSession.mockReset().mockResolvedValue(null);
   checkScanLimit.mockReset().mockResolvedValue({ ok: true });
   normaliseAndValidateUrl.mockReset().mockResolvedValue({ ok: true, url: 'https://example.com/' });
   gather.mockReset().mockResolvedValue(makePage());
@@ -48,12 +43,14 @@ beforeEach(() => {
 });
 
 describe('POST /api/scan', () => {
-  it('returns the session response when there is no session', async () => {
-    requireSession.mockResolvedValue(new Response(null, { status: 401 }));
+  it('runs a scan without a session cookie or an access code', async () => {
+    vi.stubEnv('ACCESS_CODE', '');
+    vi.stubEnv('SESSION_SECRET', '');
     const res = await POST(scan({ url: 'example.com' }));
-    expect(res.status).toBe(401);
-    expect(checkScanLimit).not.toHaveBeenCalled();
-    expect(gather).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+    expect(res.status).toBe(200);
+    expect(checkScanLimit).toHaveBeenCalledWith('203.0.113.7');
+    expect(gather).toHaveBeenCalledWith('https://example.com/');
   });
 
   it.each([

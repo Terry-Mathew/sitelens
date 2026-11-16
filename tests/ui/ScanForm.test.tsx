@@ -52,11 +52,12 @@ describe('ScanForm', () => {
     expect(saved?.draft.includedCheckIds).toEqual(['title']);
   });
 
-  it('ScanForm sends the user to the login page on 401', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Sign in again.' }, { status: 401 })));
+  it('ScanForm shows the error and stays on the page when the API answers 401', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Not allowed.' }, { status: 401 })));
     render(<ScanForm />);
     fireEvent.change(screen.getByLabelText('Website address'), { target: { value: 'example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Scan homepage' }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/login'));
+    expect(await screen.findByText('Not allowed.')).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
   });
 });

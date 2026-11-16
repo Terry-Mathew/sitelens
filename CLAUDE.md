@@ -35,9 +35,9 @@ These rules are mandatory. A change that breaks one of them is a defect, even if
 
 1. Send every user URL through `lib/security/`. Do this before you call Firecrawl, PageSpeed, or any other fetch.
 2. The own fetcher must check each IP address at connection time and on each redirect. DNS rebinding is not an accepted risk.
-3. Each route handler must check the session itself. The proxy is not the only check.
+3. SiteLens has no sign-in now (ADR-0007). Do not deploy it to the public internet before user sign-in exists. When sign-in exists, each route handler must check the user itself. The proxy must not be the only check.
 4. The scan endpoint and the PageSpeed endpoint must each have rate limits.
-5. Browser storage keeps only scans, report drafts, and branding. Do not store the access code, the session token, or a credential.
+5. Browser storage keeps only scans, report drafts, and branding. Do not store a session token or a credential.
 6. Do not log scanned URLs or scan results on the server.
 
 ## Approval gates
@@ -52,7 +52,7 @@ You must get approval from the founder before you do these things:
 
 ## How to work
 
-- Use test-driven development for the scanner (`lib/gather`, `lib/checks`, `lib/performance`). Use it for security code (`lib/security`, `lib/ratelimit`, `lib/tickets`, `proxy.ts`, and the API routes). Write the failing test first, then see it fail.
+- Use test-driven development for the scanner (`lib/gather`, `lib/checks`, `lib/performance`). Use it for security code (`lib/security`, `lib/ratelimit`, `lib/tickets`, and the API routes). Write the failing test first, then see it fail.
 - To add a check, add one file in `lib/checks/<category>/`, one entry in `lib/checks/registry.ts`, and one entry in `lib/content/checks.ts`. Then add tests for the pass, fail, and unable cases.
 - Do the checks without network calls. All network calls happen in `lib/gather/`.
 - Before you build the interface, use the `frontend-design` and `design-taste-frontend` skills.
@@ -89,7 +89,7 @@ Keep each responsibility in its module. Do not move a responsibility without an 
 | Reviewed text | `lib/content/` | The only source of explanations and fixes. |
 | Report logic | `lib/report/` | Pure functions. They never change a `ScanResult`. |
 | Rate limits and tickets | `lib/ratelimit.ts`, `lib/tickets.ts` | Route handlers call these. Route handlers do not count requests themselves. |
-| HTTP | `app/api/*/route.ts` | Thin handlers: session, rate limit, validation, one call to `lib/`, HTTP response. No business rules. |
+| HTTP | `app/api/*/route.ts` | Thin handlers: user check (when sign-in exists), rate limit, validation, one call to `lib/`, HTTP response. No business rules. |
 | Interface | `app/`, `components/` | No business rules. Use `lib/report/` for report decisions. |
 | Database (proposed in ADR-0003) | `lib/db/` | The only place for SQL and Drizzle calls. |
 

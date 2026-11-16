@@ -1,6 +1,5 @@
 import { getPerformanceProvider } from '@/lib/performance';
 import { checkPageSpeedLimit, getClientIp, type LimitResult } from '@/lib/ratelimit';
-import { requireSession } from '@/lib/security/session';
 import { normaliseAndValidateUrl } from '@/lib/security/url';
 import { redeemPerformanceTicket, verifyPerformanceTicket } from '@/lib/tickets';
 
@@ -32,9 +31,6 @@ async function readBody(req: Request): Promise<{ url: string; ticket: string } |
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const denied = await requireSession(req);
-  if (denied) return denied;
-
   const body = await readBody(req);
   if (body === null) return Response.json({ error: BAD_URL }, { status: 400 });
 

@@ -6,7 +6,7 @@
 
 ## Context and problem
 
-v1 uses one shared access code and a signed session cookie (`lib/security/session.ts`). A subscription SaaS needs one account for each user, so that SiteLens can connect a user to a plan, a subscription, and usage. The founder prefers Neon Managed Better Auth, unless a concrete feature gap makes self-hosting necessary.
+v1 used one shared access code and a signed session cookie. ADR-0007 removed them on 2026-11-16, so the app has no sign-in now. A subscription SaaS needs one account for each user, so that SiteLens can connect a user to a plan, a subscription, and usage. The founder prefers Neon Managed Better Auth, unless a concrete feature gap makes self-hosting necessary.
 
 ## SiteLens requirements
 
@@ -40,13 +40,13 @@ Option 1. No SiteLens requirement for the subscription milestone needs a missing
 
 These items were not confirmed from the documentation during the research. Check each one in a Neon test project:
 
-1. Does the managed service limit failed sign-in attempts for each IP address or each account? If not, SiteLens must keep its own login limit (see ADR-0005).
+1. Does the managed service limit failed sign-in attempts for each IP address or each account? If not, SiteLens must add its own sign-in limit (see ADR-0005).
 2. What is the sending limit of the shared email provider? The Neon documentation says only that production must use a custom provider.
 3. Can a project move from managed to self-hosted Better Auth later without new passwords for users?
 
 ## Consequences and trade-offs
 
-- The access code, `/api/login`, and the access-code session in `lib/security/session.ts` are removed after the change to accounts. This is a breaking change for current test users. Each user must create an account.
+- ADR-0007 already removed the access code. After this change, each user must create an account before a scan.
 - New environment variables: `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`.
 - `getSession()` keeps session data in a signed cookie for 5 minutes (`sessionDataTtl` default 300). A revoked session can stay valid for up to 5 minutes. This is acceptable for SiteLens.
 - Production needs a custom email provider (an SMTP service). That is a new external account. This is an approval gate.
@@ -55,6 +55,5 @@ These items were not confirmed from the documentation during the research. Check
 
 ## Related files or components
 
-- New: `lib/auth/server.ts`, `lib/auth/session.ts`, `app/api/auth/[...path]/route.ts`, sign-in and sign-up pages
-- Changed: `proxy.ts`, all route handlers in `app/api/`
-- Removed later: `app/api/login/route.ts`, the access-code parts of `lib/security/session.ts`
+- New: `lib/auth/server.ts`, `lib/auth/session.ts`, `app/api/auth/[...path]/route.ts`, `proxy.ts`, sign-in and sign-up pages
+- Changed: all route handlers in `app/api/`
